@@ -306,6 +306,7 @@
                                 <th class="p-2 sm:p-3">Litros</th>
                                 <th class="p-2 sm:p-3">Total</th>
                                 <th class="p-2 sm:p-3">Estatus</th>
+                                <th class="p-2 sm:p-3">Observaciones</th>
                                 <th class="p-2 sm:p-3 col-acciones-venta hidden">Acciones</th>
                             </tr>
                         </thead>
@@ -607,9 +608,13 @@
                     <label class="block text-xs font-bold text-slate-300 mb-1">Total de Venta ($)</label>
                     <input type="text" id="vtaTotal" readonly class="w-full bg-slate-800 font-bold text-amber-400 border border-regio rounded px-3 py-2 text-xs sm:text-sm">
                 </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Observaciones</label>
+                    <textarea id="vtaObs" rows="2" class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm" placeholder="Notas, instrucciones de entrega, comentarios..."></textarea>
+                </div>
                 <div class="flex justify-end space-x-2 pt-2">
                     <button type="button" onclick="closeModal('modalVenta')" class="px-3 py-1.5 bg-slate-700 text-white rounded text-xs">Cancelar</button>
-                    <button type="submit" class="px-3 py-1.5 bg-amber-500 text-slate-950 font-bold rounded text-xs">Registrar</button>
+                    <button type="submit" class="px-3 py-1.5 bg-amber-500 text-slate-950 font-bold rounded text-xs">Guardar</button>
                 </div>
             </form>
         </div>
@@ -803,16 +808,8 @@
                     { id: 2, nombre: 'Carlos Mora', user: 'carlos.mora', pass: '123', rol: 'Agente', region: 'Monterrey Norte' },
                     { id: 3, nombre: 'Ana Torres', user: 'ana.torres', pass: '123', rol: 'Agente', region: 'San Pedro' }
                 ],
-                clientes: [
-                    { id: 'RF-CLI-001', nombre: 'Transportes del Norte S.A.', telefono: '818-555-0192', region: 'Monterrey Norte', agente: 'Carlos Mora', ultimaCompra: '2026-10-01' },
-                    { id: 'RF-CLI-002', nombre: 'Constructora Regiomontana', telefono: '811-444-9821', region: 'San Pedro', agente: 'Ana Torres', ultimaCompra: '2026-09-15' },
-                    { id: 'RF-CLI-003', nombre: 'Flotillas Cerro Azul', telefono: '785-123-4567', region: 'Cerro Azul, Ver.', agente: 'Carlos Mora', ultimaCompra: '2026-08-20' }
-                ],
-                ventas: [
-                    { id: 'RF-VTA-1001', fecha: '2026-10-01', cliente: 'Transportes del Norte S.A.', vendedor: 'Carlos Mora', producto: 'Diésel', litros: 5000, precio: 24.80, total: 124000, estatus: 'Entregada', obs: 'Entregado en planta' },
-                    { id: 'RF-VTA-1002', fecha: '2026-10-03', cliente: 'Constructora Regiomontana', vendedor: 'Ana Torres', producto: 'Gasolina Regular', litros: 3000, precio: 23.50, total: 70500, estatus: 'En Tránsito', obs: 'Patios San Pedro' },
-                    { id: 'RF-VTA-1003', fecha: '2026-10-05', cliente: 'Flotillas Cerro Azul', vendedor: 'Carlos Mora', producto: 'Diésel', litros: 8000, precio: 24.80, total: 198400, estatus: 'En Tránsito', obs: 'Tanque principal' }
-                ],
+                clientes: [],
+                ventas: [],
                 modo: 'local',
                 firebaseConfig: null
             };
@@ -882,9 +879,6 @@
             // Clientes
             onSnapshot(collection(window.db, "clientes"), (snapshot) => {
                 window.clientes = snapshot.docs.map(d => ({ idDoc: d.id, ...d.data() }));
-                if (window.clientes.length === 0) {
-                    getDefaultData().clientes.forEach(c => addDoc(collection(window.db, "clientes"), c));
-                }
                 if (window.currentUser) {
                     if (typeof renderClientes === 'function') renderClientes();
                     if (typeof renderDashboard === 'function') renderDashboard();
@@ -894,9 +888,6 @@
             // Ventas
             onSnapshot(collection(window.db, "ventas"), (snapshot) => {
                 window.ventas = snapshot.docs.map(d => ({ idDoc: d.id, ...d.data() }));
-                if (window.ventas.length === 0) {
-                    getDefaultData().ventas.forEach(v => addDoc(collection(window.db, "ventas"), v));
-                }
                 if (window.currentUser) {
                     if (typeof renderDashboard === 'function') renderDashboard();
                     if (typeof renderVentas === 'function') renderVentas();
@@ -907,25 +898,33 @@
         }
 
         // ===== INIT =====
+        // Sesión solo en sessionStorage: se borra al cerrar pestaña/navegador/app.
+        // Al refrescar (F5) en la misma pestaña se mantiene; al reabrir hay que iniciar sesión.
         function saveSession(user) {
             try {
+                // Limpiar cualquier sesión antigua en localStorage
+                localStorage.removeItem('regioFuelSession');
                 const session = { user: user.user, nombre: user.nombre, rol: user.rol, region: user.region || '', idDoc: user.idDoc || null };
-                localStorage.setItem('regioFuelSession', JSON.stringify(session));
+                sessionStorage.setItem('regioFuelSession', JSON.stringify(session));
             } catch (e) {}
         }
 
         function clearSession() {
-            try { localStorage.removeItem('regioFuelSession'); } catch (e) {}
+            try {
+                sessionStorage.removeItem('regioFuelSession');
+                localStorage.removeItem('regioFuelSession');
+            } catch (e) {}
         }
 
         function tryRestoreSession() {
             try {
-                const raw = localStorage.getItem('regioFuelSession');
+                // No restaurar desde localStorage (sesiones antiguas)
+                localStorage.removeItem('regioFuelSession');
+                const raw = sessionStorage.getItem('regioFuelSession');
                 if (!raw) return false;
                 const session = JSON.parse(raw);
                 if (!session || !session.user) return false;
 
-                // Buscar el usuario actualizado en la lista cargada
                 const found = window.usuarios.find(x => x.user === session.user);
                 if (!found) return false;
 
@@ -977,6 +976,8 @@
         }
 
         // Llamar al iniciar
+        // La sesión usa sessionStorage: al cerrar la pestaña/navegador/app se borra sola.
+        // Al actualizar (F5) en la misma pestaña se mantiene hasta que cierres sesión o la pestaña.
         initDataLayer();
 
         // ===== OPERACIONES DE ESCRITURA (híbridas) =====
@@ -1033,12 +1034,14 @@
                 const idx = parseInt(editIdx, 10);
                 const target = window.ventas[idx];
                 if (!target) return;
+                const obs = (document.getElementById('vtaObs')?.value || '').trim();
                 const datos = {
                     cliente: cli,
                     producto: prod,
                     litros: lts,
                     precio: precio,
-                    total: tot
+                    total: tot,
+                    obs: obs
                 };
                 if (window.dataMode === 'firebase' && window.db && target.idDoc) {
                     await updateDoc(doc(window.db, "ventas", target.idDoc), datos);
@@ -1051,6 +1054,7 @@
                 }
             } else {
                 // NUEVA venta
+                const obs = (document.getElementById('vtaObs')?.value || '').trim() || 'Orden registrada';
                 const nueva = {
                     id: 'RF-VTA-' + (1000 + window.ventas.length + 1),
                     fecha: new Date().toISOString().split('T')[0],
@@ -1061,7 +1065,7 @@
                     precio: precio,
                     total: tot,
                     estatus: 'En Tránsito',
-                    obs: 'Orden registrada'
+                    obs: obs
                 };
                 if (window.dataMode === 'firebase' && window.db) {
                     await addDoc(collection(window.db, "ventas"), nueva);
@@ -1112,6 +1116,28 @@
                 await saveToLocal();
                 renderEntregas();
                 renderDashboard();
+            }
+        };
+
+        window.guardarObservacionVenta = async function(idx, texto) {
+            if (!window.currentUser) return;
+            const vta = window.ventas[idx];
+            if (!vta) return;
+            const isAdmin = window.currentUser.rol === 'Admin';
+            const esDueno = vta.vendedor === window.currentUser.nombre;
+            if (!isAdmin && !esDueno) {
+                alert('Solo el agente que registró la venta o un administrador pueden editar las observaciones.');
+                return;
+            }
+            const obs = (texto || '').trim();
+            if ((vta.obs || '') === obs) return; // sin cambios
+
+            if (window.dataMode === 'firebase' && window.db && vta.idDoc) {
+                await updateDoc(doc(window.db, "ventas", vta.idDoc), { obs: obs });
+            } else {
+                vta.obs = obs;
+                await saveToLocal();
+                // no re-render completo para no perder el foco al escribir
             }
         };
 
@@ -1391,7 +1417,7 @@
         function logout() {
             window.currentUser = null;
             if (typeof clearSession === 'function') clearSession();
-            else try { localStorage.removeItem('regioFuelSession'); } catch(e) {}
+            else try { sessionStorage.removeItem('regioFuelSession'); localStorage.removeItem('regioFuelSession'); } catch(e) {}
             document.getElementById('loginScreen').classList.remove('hidden');
             document.getElementById('loginUser').value = '';
             document.getElementById('loginPass').value = '';
@@ -1720,6 +1746,16 @@
                         </div>
                     </td>`;
                 }
+                const puedeEditarObs = isAdmin || (v.vendedor === window.currentUser.nombre);
+                const obsVal = (v.obs || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const obsCell = puedeEditarObs
+                    ? `<td class="p-2 sm:p-3 min-w-[160px] max-w-[240px]">
+                            <textarea rows="2" class="w-full bg-slate-900 border border-regio rounded px-2 py-1 text-[10px] sm:text-xs text-slate-200 focus:outline-none focus:border-amber-500 resize-y"
+                                placeholder="Escribe observaciones..."
+                                onblur="guardarObservacionVenta(${realIdx}, this.value)">${obsVal}</textarea>
+                       </td>`
+                    : `<td class="p-2 sm:p-3 text-[10px] sm:text-xs text-slate-400 max-w-[180px]">${obsVal || '-'}</td>`;
+
                 tb.innerHTML += `
                     <tr>
                         <td class="p-2 sm:p-3 font-bold text-amber-400">${v.id}<br><span class="text-[10px] text-slate-400">${v.fecha}</span></td>
@@ -1729,6 +1765,7 @@
                         <td class="p-2 sm:p-3">${(v.litros || 0).toLocaleString()} Lts</td>
                         <td class="p-2 sm:p-3 font-bold text-emerald-400">$${(v.total || 0).toLocaleString('es-MX', {minimumFractionDigits:2})}</td>
                         <td class="p-2 sm:p-3"><span class="px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-bold ${getBadgeEstatus(v.estatus)}">${v.estatus}</span></td>
+                        ${obsCell}
                         ${acciones}
                     </tr>
                 `;
@@ -1752,6 +1789,7 @@
             });
             document.getElementById('vtaLitros').value = '';
             document.getElementById('vtaTotal').value = '';
+            document.getElementById('vtaObs').value = '';
             autoCargarPrecioReferencia();
             document.getElementById('modalVenta').classList.remove('hidden');
         }
@@ -1774,6 +1812,7 @@
             document.getElementById('vtaProducto').value = v.producto || 'Diésel';
             document.getElementById('vtaLitros').value = v.litros || '';
             document.getElementById('vtaPrecio').value = v.precio || '';
+            document.getElementById('vtaObs').value = v.obs || '';
             calcTotalVenta();
             document.getElementById('modalVenta').classList.remove('hidden');
         }
