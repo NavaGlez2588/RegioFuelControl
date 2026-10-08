@@ -187,7 +187,7 @@
                         <i class="fa-solid fa-droplet text-cyan-400"></i>
                     </div>
                     <div id="kpiTotalLitros" class="text-xl sm:text-2xl font-black text-white mt-2">0 Lts</div>
-                    <span class="text-xs text-cyan-400 font-semibold">Diésel & Gasolina</span>
+                    <span class="text-xs text-cyan-400 font-semibold">Diésel, Regular y Premium</span>
                 </div>
                 <div class="bg-regio-card p-4 sm:p-5 rounded-xl border border-regio shadow-md">
                     <div class="flex justify-between items-center text-slate-400 text-xs sm:text-sm">
@@ -301,6 +301,7 @@
                             <tr>
                                 <th class="p-2 sm:p-3">Folio/Fecha</th>
                                 <th class="p-2 sm:p-3">Cliente</th>
+                                <th class="p-2 sm:p-3">Agente</th>
                                 <th class="p-2 sm:p-3">Producto</th>
                                 <th class="p-2 sm:p-3">Litros</th>
                                 <th class="p-2 sm:p-3">Total</th>
@@ -387,17 +388,23 @@
                     <i class="fa-solid fa-pen-to-square mr-1"></i> Editar Precios
                 </button>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="bg-regio-card p-6 rounded-xl border border-regio text-center shadow-lg">
                     <i class="fa-solid fa-truck-monster text-amber-500 text-4xl sm:text-5xl mb-3"></i>
-                    <h3 class="text-lg sm:text-xl font-bold text-white">Diésel Industrial / Comercial</h3>
+                    <h3 class="text-lg sm:text-xl font-bold text-white">Diésel</h3>
                     <div id="precioDieselRef" class="text-3xl sm:text-4xl font-black text-amber-400 my-3">$24.80 / Lt</div>
                     <p class="text-xs text-slate-400">Precio diario fijado por administración</p>
                 </div>
                 <div class="bg-regio-card p-6 rounded-xl border border-regio text-center shadow-lg">
                     <i class="fa-solid fa-car text-cyan-400 text-4xl sm:text-5xl mb-3"></i>
-                    <h3 class="text-lg sm:text-xl font-bold text-white">Gasolina Regular / Magna</h3>
+                    <h3 class="text-lg sm:text-xl font-bold text-white">Gasolina Regular</h3>
                     <div id="precioGasolinaRef" class="text-3xl sm:text-4xl font-black text-cyan-400 my-3">$23.50 / Lt</div>
+                    <p class="text-xs text-slate-400">Precio diario fijado por administración</p>
+                </div>
+                <div class="bg-regio-card p-6 rounded-xl border border-regio text-center shadow-lg">
+                    <i class="fa-solid fa-gas-pump text-emerald-400 text-4xl sm:text-5xl mb-3"></i>
+                    <h3 class="text-lg sm:text-xl font-bold text-white">Gasolina Premium</h3>
+                    <div id="precioPremiumRef" class="text-3xl sm:text-4xl font-black text-emerald-400 my-3">$25.20 / Lt</div>
                     <p class="text-xs text-slate-400">Precio diario fijado por administración</p>
                 </div>
             </div>
@@ -557,6 +564,10 @@
                     <label class="block text-xs font-bold text-slate-300 mb-1">Gasolina Regular ($/Lt)</label>
                     <input type="number" step="0.01" id="inputPrecioGasolina" required class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm">
                 </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Gasolina Premium ($/Lt)</label>
+                    <input type="number" step="0.01" id="inputPrecioPremium" required class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm">
+                </div>
                 <div class="flex justify-end space-x-2 pt-2">
                     <button type="button" onclick="closeModal('modalPrecios')" class="px-3 py-1.5 bg-slate-700 text-white rounded text-xs">Cancelar</button>
                     <button type="submit" class="px-3 py-1.5 bg-amber-500 text-slate-950 font-bold rounded text-xs">Guardar</button>
@@ -579,6 +590,7 @@
                     <select id="vtaProducto" onchange="autoCargarPrecioReferencia()" required class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm">
                         <option value="Diésel">Diésel</option>
                         <option value="Gasolina Regular">Gasolina Regular</option>
+                        <option value="Gasolina Premium">Gasolina Premium</option>
                     </select>
                 </div>
                 <div class="grid grid-cols-2 gap-2 sm:gap-3">
@@ -756,7 +768,7 @@
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         // Estado global
-        window.preciosHoy = { diesel: 24.80, gasolina: 23.50 };
+        window.preciosHoy = { diesel: 24.80, gasolina: 23.50, premium: 25.20 };
         window.usuarios = [];
         window.clientes = [];
         window.ventas = [];
@@ -785,7 +797,7 @@
 
         function getDefaultData() {
             return {
-                preciosHoy: { diesel: 24.80, gasolina: 23.50 },
+                preciosHoy: { diesel: 24.80, gasolina: 23.50, premium: 25.20 },
                 usuarios: [
                     { id: 1, nombre: 'Administrador General', user: 'admin', pass: '123', rol: 'Admin', region: 'General' },
                     { id: 2, nombre: 'Carlos Mora', user: 'carlos.mora', pass: '123', rol: 'Agente', region: 'Monterrey Norte' },
@@ -996,7 +1008,8 @@
         window.guardarPreciosDiarios = async function() {
             const diesel = parseFloat(document.getElementById('inputPrecioDiesel').value) || 24.80;
             const gasolina = parseFloat(document.getElementById('inputPrecioGasolina').value) || 23.50;
-            window.preciosHoy = { diesel, gasolina };
+            const premium = parseFloat(document.getElementById('inputPrecioPremium').value) || 25.20;
+            window.preciosHoy = { diesel, gasolina, premium };
 
             if (window.dataMode === 'firebase' && window.db) {
                 await setDoc(doc(window.db, "configuracion", "precios"), window.preciosHoy);
@@ -1427,13 +1440,17 @@
         }
 
         function actualizarVistaPrecios() {
-            document.getElementById('precioDieselRef').innerText = `$${parseFloat(window.preciosHoy.diesel).toFixed(2)} / Lt`;
-            document.getElementById('precioGasolinaRef').innerText = `$${parseFloat(window.preciosHoy.gasolina).toFixed(2)} / Lt`;
+            document.getElementById('precioDieselRef').innerText = `$${parseFloat(window.preciosHoy.diesel || 0).toFixed(2)} / Lt`;
+            document.getElementById('precioGasolinaRef').innerText = `$${parseFloat(window.preciosHoy.gasolina || 0).toFixed(2)} / Lt`;
+            const premEl = document.getElementById('precioPremiumRef');
+            if (premEl) premEl.innerText = `$${parseFloat(window.preciosHoy.premium || 25.20).toFixed(2)} / Lt`;
         }
 
         function openModalEditarPrecios() {
             document.getElementById('inputPrecioDiesel').value = window.preciosHoy.diesel;
             document.getElementById('inputPrecioGasolina').value = window.preciosHoy.gasolina;
+            const ip = document.getElementById('inputPrecioPremium');
+            if (ip) ip.value = window.preciosHoy.premium || 25.20;
             document.getElementById('modalPrecios').classList.remove('hidden');
         }
 
@@ -1497,11 +1514,15 @@
             // --- GRÁFICA 1: Ventas por Producto ($ vs Lts) ---
             let dieselLitros = 0, dieselDinero = 0;
             let gasolinaLitros = 0, gasolinaDinero = 0;
+            let premiumLitros = 0, premiumDinero = 0;
 
             vtasPropias.forEach(v => {
                 if(v.producto === 'Diésel') {
                     dieselLitros += v.litros || 0;
                     dieselDinero += v.total || 0;
+                } else if(v.producto === 'Gasolina Premium') {
+                    premiumLitros += v.litros || 0;
+                    premiumDinero += v.total || 0;
                 } else if(v.producto === 'Gasolina Regular' || v.producto === 'Gasolina') {
                     gasolinaLitros += v.litros || 0;
                     gasolinaDinero += v.total || 0;
@@ -1515,11 +1536,11 @@
                 chartVentaGeneralInstance = new Chart(ctxGeneral, {
                     type: 'bar',
                     data: {
-                        labels: ['Diésel', 'Gasolina Regular'],
+                        labels: ['Diésel', 'Gasolina Regular', 'Gasolina Premium'],
                         datasets: [
                             {
                                 label: 'Litros Vendidos (Lts)',
-                                data: [dieselLitros, gasolinaLitros],
+                                data: [dieselLitros, gasolinaLitros, premiumLitros],
                                 backgroundColor: 'rgba(6, 182, 212, 0.75)', // cyan
                                 borderColor: '#06b6d4',
                                 borderWidth: 1,
@@ -1527,7 +1548,7 @@
                             },
                             {
                                 label: 'Monto Total ($ MXN)',
-                                data: [dieselDinero, gasolinaDinero],
+                                data: [dieselDinero, gasolinaDinero, premiumDinero],
                                 backgroundColor: 'rgba(245, 158, 11, 0.75)', // amber
                                 borderColor: '#f59e0b',
                                 borderWidth: 1,
@@ -1703,6 +1724,7 @@
                     <tr>
                         <td class="p-2 sm:p-3 font-bold text-amber-400">${v.id}<br><span class="text-[10px] text-slate-400">${v.fecha}</span></td>
                         <td class="p-2 sm:p-3 font-semibold text-white">${v.cliente}</td>
+                        <td class="p-2 sm:p-3 text-cyan-300">${v.vendedor || '-'}</td>
                         <td class="p-2 sm:p-3">${v.producto}</td>
                         <td class="p-2 sm:p-3">${(v.litros || 0).toLocaleString()} Lts</td>
                         <td class="p-2 sm:p-3 font-bold text-emerald-400">$${(v.total || 0).toLocaleString('es-MX', {minimumFractionDigits:2})}</td>
@@ -1758,7 +1780,9 @@
 
         function autoCargarPrecioReferencia() {
             const prod = document.getElementById('vtaProducto').value;
-            document.getElementById('vtaPrecio').value = prod === 'Diésel' ? window.preciosHoy.diesel : window.preciosHoy.gasolina;
+            if (prod === 'Diésel') document.getElementById('vtaPrecio').value = window.preciosHoy.diesel;
+            else if (prod === 'Gasolina Premium') document.getElementById('vtaPrecio').value = window.preciosHoy.premium || 25.20;
+            else document.getElementById('vtaPrecio').value = window.preciosHoy.gasolina;
             calcTotalVenta();
         }
 
