@@ -305,6 +305,7 @@
                                 <th class="p-2 sm:p-3">Litros</th>
                                 <th class="p-2 sm:p-3">Total</th>
                                 <th class="p-2 sm:p-3">Estatus</th>
+                                <th class="p-2 sm:p-3 col-acciones-venta hidden">Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="tablaVentas" class="divide-y divide-regio text-slate-300"></tbody>
@@ -566,8 +567,9 @@
 
     <div id="modalVenta" class="fixed inset-0 bg-black/70 hidden z-50 flex items-center justify-center p-4">
         <div class="bg-regio-card border border-regio rounded-xl p-5 sm:p-6 max-w-md w-full">
-            <h3 class="text-lg sm:text-xl font-bold text-white mb-4">Registrar Venta</h3>
+            <h3 id="modalVentaTitulo" class="text-lg sm:text-xl font-bold text-white mb-4">Registrar Venta</h3>
             <form onsubmit="event.preventDefault(); guardarVenta();" class="space-y-3">
+                <input type="hidden" id="vtaEditIndex" value="">
                 <div>
                     <label class="block text-xs font-bold text-slate-300 mb-1">Cliente</label>
                     <select id="vtaCliente" required class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm"></select>
@@ -623,6 +625,13 @@
                 <div>
                     <label class="block text-xs font-bold text-slate-300 mb-1">Región / Zona</label>
                     <input type="text" id="agenteRegion" required class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm" placeholder="Ej: San Pedro">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Rol del usuario</label>
+                    <select id="agenteRol" required class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm">
+                        <option value="Agente">Agente de Ventas</option>
+                        <option value="Admin">Administrador</option>
+                    </select>
                 </div>
                 <div class="flex justify-end space-x-2 pt-2">
                     <button type="button" onclick="closeModal('modalAgente')" class="px-3 py-1.5 bg-slate-700 text-white rounded text-xs">Cancelar</button>
@@ -847,6 +856,10 @@
                     const iniciales = getDefaultData().usuarios;
                     iniciales.forEach(u => addDoc(collection(window.db, "usuarios"), u));
                 }
+                // Restaurar sesión si aún no hay usuario logueado
+                if (!window.currentUser && typeof tryRestoreSession === 'function') {
+                    tryRestoreSession();
+                }
                 if (window.currentUser) {
                     if (typeof renderAgentes === 'function') renderAgentes();
                     if (typeof poblardropdowns === 'function') poblardropdowns();
@@ -882,6 +895,50 @@
         }
 
         // ===== INIT =====
+        function saveSession(user) {
+            try {
+                const session = { user: user.user, nombre: user.nombre, rol: user.rol, region: user.region || '', idDoc: user.idDoc || null };
+                localStorage.setItem('regioFuelSession', JSON.stringify(session));
+            } catch (e) {}
+        }
+
+        function clearSession() {
+            try { localStorage.removeItem('regioFuelSession'); } catch (e) {}
+        }
+
+        function tryRestoreSession() {
+            try {
+                const raw = localStorage.getItem('regioFuelSession');
+                if (!raw) return false;
+                const session = JSON.parse(raw);
+                if (!session || !session.user) return false;
+
+                // Buscar el usuario actualizado en la lista cargada
+                const found = window.usuarios.find(x => x.user === session.user);
+                if (!found) return false;
+
+                window.currentUser = found;
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('loggedUserName').innerText = window.currentUser.nombre;
+                document.getElementById('loggedUserRole').innerText = window.currentUser.rol + (window.dataMode === 'local' ? ' (Local)' : ' (Firebase)');
+
+                if (window.currentUser.rol !== 'Admin') {
+                    document.querySelectorAll('.admin-only').forEach(e => e.classList.add('hidden'));
+                    const notice = document.getElementById('dashRoleNotice');
+                    if (notice) notice.innerText = 'Mis Resultados y Ventas';
+                } else {
+                    document.querySelectorAll('.admin-only').forEach(e => e.classList.remove('hidden'));
+                    const notice = document.getElementById('dashRoleNotice');
+                    if (notice) notice.innerText = 'Vista Consolidada (Empresa)';
+                }
+                if (typeof initApp === 'function') initApp();
+                return true;
+            } catch (e) {
+                clearSession();
+                return false;
+            }
+        }
+
         async function initDataLayer() {
             const data = await loadFromLocal();
             window.preciosHoy = data.preciosHoy || window.preciosHoy;
@@ -894,12 +951,17 @@
             if (window.dataMode === 'firebase' && window.firebaseConfig) {
                 if (initFirebase(window.firebaseConfig)) {
                     startFirebaseListeners();
+                    // En Firebase los usuarios llegan async; intentamos restaurar un poco después
+                    setTimeout(() => { tryRestoreSession(); }, 1500);
                 } else {
                     window.dataMode = 'local';
                     alert('Error al conectar con Firebase. Cambiando a modo Local.');
+                    tryRestoreSession();
                 }
+            } else {
+                // Modo local: usuarios ya cargados
+                tryRestoreSession();
             }
-            // En modo local los datos ya están cargados
         }
 
         // Llamar al iniciar
@@ -913,6 +975,7 @@
 
             if (found) {
                 window.currentUser = found;
+                saveSession(found);
                 document.getElementById('loginScreen').classList.add('hidden');
                 document.getElementById('loggedUserName').innerText = window.currentUser.nombre;
                 document.getElementById('loggedUserRole').innerText = window.currentUser.rol + (window.dataMode === 'local' ? ' (Local)' : ' (Firebase)');
@@ -945,43 +1008,84 @@
         };
 
         window.guardarVenta = async function() {
+            const editIdx = document.getElementById('vtaEditIndex').value;
             const cli = document.getElementById('vtaCliente').value;
             const prod = document.getElementById('vtaProducto').value;
             const lts = parseFloat(document.getElementById('vtaLitros').value);
             const precio = parseFloat(document.getElementById('vtaPrecio').value);
             const tot = lts * precio;
 
-            const nueva = {
-                id: 'RF-VTA-' + (1000 + window.ventas.length + 1),
-                fecha: new Date().toISOString().split('T')[0],
-                cliente: cli,
-                vendedor: window.currentUser.nombre,
-                producto: prod,
-                litros: lts,
-                precio: precio,
-                total: tot,
-                estatus: 'En Tránsito',
-                obs: 'Orden registrada'
-            };
-
-            if (window.dataMode === 'firebase' && window.db) {
-                await addDoc(collection(window.db, "ventas"), nueva);
-                const cObj = window.clientes.find(x => x.nombre === cli);
-                if (cObj && cObj.idDoc) {
-                    await updateDoc(doc(window.db, "clientes", cObj.idDoc), {
-                        ultimaCompra: new Date().toISOString().split('T')[0]
-                    });
+            if (editIdx !== '') {
+                // EDITAR venta existente (solo Admin)
+                const idx = parseInt(editIdx, 10);
+                const target = window.ventas[idx];
+                if (!target) return;
+                const datos = {
+                    cliente: cli,
+                    producto: prod,
+                    litros: lts,
+                    precio: precio,
+                    total: tot
+                };
+                if (window.dataMode === 'firebase' && window.db && target.idDoc) {
+                    await updateDoc(doc(window.db, "ventas", target.idDoc), datos);
+                } else {
+                    Object.assign(target, datos);
+                    await saveToLocal();
+                    renderDashboard();
+                    renderVentas();
+                    renderEntregas();
                 }
             } else {
-                window.ventas.push(nueva);
-                const cObj = window.clientes.find(x => x.nombre === cli);
-                if (cObj) cObj.ultimaCompra = new Date().toISOString().split('T')[0];
+                // NUEVA venta
+                const nueva = {
+                    id: 'RF-VTA-' + (1000 + window.ventas.length + 1),
+                    fecha: new Date().toISOString().split('T')[0],
+                    cliente: cli,
+                    vendedor: window.currentUser.nombre,
+                    producto: prod,
+                    litros: lts,
+                    precio: precio,
+                    total: tot,
+                    estatus: 'En Tránsito',
+                    obs: 'Orden registrada'
+                };
+                if (window.dataMode === 'firebase' && window.db) {
+                    await addDoc(collection(window.db, "ventas"), nueva);
+                    const cObj = window.clientes.find(x => x.nombre === cli);
+                    if (cObj && cObj.idDoc) {
+                        await updateDoc(doc(window.db, "clientes", cObj.idDoc), {
+                            ultimaCompra: new Date().toISOString().split('T')[0]
+                        });
+                    }
+                } else {
+                    window.ventas.push(nueva);
+                    const cObj = window.clientes.find(x => x.nombre === cli);
+                    if (cObj) cObj.ultimaCompra = new Date().toISOString().split('T')[0];
+                    await saveToLocal();
+                    renderDashboard();
+                    renderVentas();
+                    renderEntregas();
+                }
+            }
+            closeModal('modalVenta');
+        };
+
+        window.eliminarVenta = async function(idx) {
+            if (!window.currentUser || window.currentUser.rol !== 'Admin') return;
+            const target = window.ventas[idx];
+            if (!target) return;
+            if (!confirm('¿Eliminar la venta ' + (target.id || '') + ' de "' + (target.cliente || '') + '"?')) return;
+
+            if (window.dataMode === 'firebase' && window.db && target.idDoc) {
+                await deleteDoc(doc(window.db, "ventas", target.idDoc));
+            } else {
+                window.ventas.splice(idx, 1);
                 await saveToLocal();
                 renderDashboard();
                 renderVentas();
                 renderEntregas();
             }
-            closeModal('modalVenta');
         };
 
         window.cambiarEstatusEntrega = async function(idx, est) {
@@ -1063,18 +1167,24 @@
             const usr = document.getElementById('agenteUser').value.trim();
             const pas = document.getElementById('agentePass').value.trim();
             const reg = document.getElementById('agenteRegion').value.trim();
+            const rol = document.getElementById('agenteRol').value || 'Agente';
 
             if (idx !== '') {
                 const target = window.usuarios[idx];
+                // No permitir quitar el último Admin ni cambiar el user admin original de forma peligrosa
+                if (target.user === 'admin' && rol !== 'Admin') {
+                    alert('No se puede cambiar el rol del usuario admin principal.');
+                    return;
+                }
                 if (window.dataMode === 'firebase' && window.db && target?.idDoc) {
-                    await updateDoc(doc(window.db, "usuarios", target.idDoc), { nombre: nom, user: usr, pass: pas, region: reg });
+                    await updateDoc(doc(window.db, "usuarios", target.idDoc), { nombre: nom, user: usr, pass: pas, region: reg, rol: rol });
                 } else {
-                    target.nombre = nom; target.user = usr; target.pass = pas; target.region = reg;
+                    target.nombre = nom; target.user = usr; target.pass = pas; target.region = reg; target.rol = rol;
                     await saveToLocal();
                     renderAgentes();
                 }
             } else {
-                const nuevo = { id: Date.now(), nombre: nom, user: usr, pass: pas, rol: 'Agente', region: reg };
+                const nuevo = { id: Date.now(), nombre: nom, user: usr, pass: pas, rol: rol, region: reg };
                 if (window.dataMode === 'firebase' && window.db) {
                     await addDoc(collection(window.db, "usuarios"), nuevo);
                 } else {
@@ -1267,7 +1377,12 @@
 
         function logout() {
             window.currentUser = null;
+            if (typeof clearSession === 'function') clearSession();
+            else try { localStorage.removeItem('regioFuelSession'); } catch(e) {}
             document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('loginUser').value = '';
+            document.getElementById('loginPass').value = '';
+            document.getElementById('loginError').classList.add('hidden');
         }
 
         function openModalForgotPass() {
@@ -1557,13 +1672,33 @@
             const search = document.getElementById('searchVenta')?.value.toLowerCase() || '';
             const tb = document.getElementById('tablaVentas');
             tb.innerHTML = '';
+            const isAdmin = window.currentUser.rol === 'Admin';
+
+            document.querySelectorAll('.col-acciones-venta').forEach(el => {
+                if (isAdmin) el.classList.remove('hidden');
+                else el.classList.add('hidden');
+            });
 
             const filtradas = window.ventas.filter(v => 
-                (window.currentUser.rol === 'Admin' || v.vendedor === window.currentUser.nombre) &&
-                (v.cliente.toLowerCase().includes(search) || v.id.toLowerCase().includes(search))
+                (isAdmin || v.vendedor === window.currentUser.nombre) &&
+                ((v.cliente || '').toLowerCase().includes(search) || (v.id || '').toLowerCase().includes(search))
             );
 
             filtradas.forEach(v => {
+                const realIdx = window.ventas.findIndex(item => (item.idDoc && item.idDoc === v.idDoc) || (item.id === v.id && item.fecha === v.fecha));
+                let acciones = '';
+                if (isAdmin) {
+                    acciones = `<td class="p-2 sm:p-3 col-acciones-venta">
+                        <div class="flex items-center space-x-2">
+                            <button onclick="editarVenta(${realIdx})" class="p-1 text-slate-300 hover:text-amber-400 transition" title="Editar venta">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            <button onclick="eliminarVenta(${realIdx})" class="p-1 text-slate-300 hover:text-red-400 transition" title="Eliminar venta">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>`;
+                }
                 tb.innerHTML += `
                     <tr>
                         <td class="p-2 sm:p-3 font-bold text-amber-400">${v.id}<br><span class="text-[10px] text-slate-400">${v.fecha}</span></td>
@@ -1572,6 +1707,7 @@
                         <td class="p-2 sm:p-3">${(v.litros || 0).toLocaleString()} Lts</td>
                         <td class="p-2 sm:p-3 font-bold text-emerald-400">$${(v.total || 0).toLocaleString('es-MX', {minimumFractionDigits:2})}</td>
                         <td class="p-2 sm:p-3"><span class="px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-bold ${getBadgeEstatus(v.estatus)}">${v.estatus}</span></td>
+                        ${acciones}
                     </tr>
                 `;
             });
@@ -1585,12 +1721,38 @@
         }
 
         function openModalVenta() {
+            document.getElementById('modalVentaTitulo').innerText = 'Registrar Venta';
+            document.getElementById('vtaEditIndex').value = '';
             const sel = document.getElementById('vtaCliente');
             sel.innerHTML = '';
             window.clientes.forEach(c => {
                 sel.innerHTML += `<option value="${c.nombre}">${c.nombre}</option>`;
             });
+            document.getElementById('vtaLitros').value = '';
+            document.getElementById('vtaTotal').value = '';
             autoCargarPrecioReferencia();
+            document.getElementById('modalVenta').classList.remove('hidden');
+        }
+
+        function editarVenta(idx) {
+            if (!window.currentUser || window.currentUser.rol !== 'Admin') return;
+            const v = window.ventas[idx];
+            if (!v) return;
+            document.getElementById('modalVentaTitulo').innerText = 'Editar Venta';
+            document.getElementById('vtaEditIndex').value = idx;
+            const sel = document.getElementById('vtaCliente');
+            sel.innerHTML = '';
+            window.clientes.forEach(c => {
+                sel.innerHTML += `<option value="${c.nombre}" ${c.nombre === v.cliente ? 'selected' : ''}>${c.nombre}</option>`;
+            });
+            // Si el cliente ya no está en el catálogo, agregarlo temporalmente
+            if (v.cliente && !window.clientes.find(c => c.nombre === v.cliente)) {
+                sel.innerHTML += `<option value="${v.cliente}" selected>${v.cliente}</option>`;
+            }
+            document.getElementById('vtaProducto').value = v.producto || 'Diésel';
+            document.getElementById('vtaLitros').value = v.litros || '';
+            document.getElementById('vtaPrecio').value = v.precio || '';
+            calcTotalVenta();
             document.getElementById('modalVenta').classList.remove('hidden');
         }
 
@@ -1767,6 +1929,7 @@
             document.getElementById('agenteUser').value = '';
             document.getElementById('agentePass').value = '';
             document.getElementById('agenteRegion').value = '';
+            document.getElementById('agenteRol').value = 'Agente';
             document.getElementById('modalAgente').classList.remove('hidden');
         }
 
@@ -1778,6 +1941,7 @@
             document.getElementById('agenteUser').value = u.user;
             document.getElementById('agentePass').value = u.pass;
             document.getElementById('agenteRegion').value = u.region;
+            document.getElementById('agenteRol').value = u.rol || 'Agente';
             document.getElementById('modalAgente').classList.remove('hidden');
         }
 
