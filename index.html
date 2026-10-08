@@ -1,0 +1,1851 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REGIO FUEL - Control Comercial de Combustibles</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .bg-regio-dark { background-color: #0b1e36; }
+        .bg-regio-card { background-color: #112846; }
+        .border-regio { border-color: #1e3a5f; }
+        .text-regio-gold { color: #f59e0b; }
+        
+        @media print {
+            body { background-color: white !important; color: black !important; }
+            .no-print { display: none !important; }
+            .print-card { background-color: white !important; border: 1px solid #ccc !important; color: black !important; box-shadow: none !important; }
+            .print-text { color: black !important; }
+        }
+    </style>
+</head>
+<body class="bg-regio-dark text-slate-100 min-h-screen flex flex-col pb-16 md:pb-0">
+
+    <!-- PANTALLA DE LOGIN -->
+    <div id="loginScreen" class="fixed inset-0 bg-regio-dark z-50 flex items-center justify-center p-4">
+        <div class="bg-regio-card border border-regio p-6 sm:p-8 rounded-2xl shadow-2xl max-w-md w-full">
+            <div class="text-center mb-6">
+                <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-amber-500/10 text-amber-500 mb-3 text-2xl">
+                    <i class="fa-solid font-bold fa-gas-pump"></i>
+                </div>
+                <h1 class="text-2xl sm:text-3xl font-extrabold tracking-wider text-white">REGIO <span class="text-amber-500">FUEL</span></h1>
+                <p class="text-slate-400 text-xs sm:text-sm mt-1">Control de Ventas y Gestión Comercial</p>
+            </div>
+
+            <form id="loginForm" onsubmit="event.preventDefault(); handleLogin();" class="space-y-4">
+                <div>
+                    <label class="block text-xs uppercase font-bold text-slate-300 mb-1.5">Usuario</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><i class="fa-solid fa-user"></i></span>
+                        <input type="text" id="loginUser" required class="w-full bg-slate-900 border border-regio rounded-lg pl-10 pr-4 py-2.5 text-white focus:outline-none focus:border-amber-500 text-sm" placeholder="Ej: admin o carlos.mora">
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between items-center mb-1.5">
+                        <label class="block text-xs uppercase font-bold text-slate-300">Contraseña</label>
+                        <button type="button" onclick="openModalForgotPass()" class="text-xs text-amber-500 hover:underline">¿Olvidaste tu clave?</button>
+                    </div>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><i class="fa-solid fa-lock"></i></span>
+                        <input type="password" id="loginPass" required class="w-full bg-slate-900 border border-regio rounded-lg pl-10 pr-4 py-2.5 text-white focus:outline-none focus:border-amber-500 text-sm" placeholder="••••••••">
+                    </div>
+                </div>
+
+                <div id="loginError" class="hidden bg-red-500/10 border border-red-500 text-red-400 text-xs p-3 rounded-lg text-center">
+                    Credenciales incorrectas. Intente nuevamente.
+                </div>
+
+                <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-lg transition duration-200 shadow-lg text-sm">
+                    Iniciar Sesión <i class="fa-solid fa-arrow-right-to-bracket ml-2"></i>
+                </button>
+            </form>
+
+            <div class="mt-6 pt-5 border-t border-regio text-xs text-slate-400 space-y-1">
+                <p class="font-semibold text-slate-300">Accesos de prueba:</p>
+                <p>• <b>Administrador:</b> admin / 123</p>
+                <p>• <b>Agente:</b> carlos.mora / 123</p>
+                <p class="mt-2 text-amber-400/80"><i class="fa-solid fa-cloud mr-1"></i> Para sincronizar en tiempo real: entra y ve al engranaje ⚙️ → Firebase</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ENCABEZADO Y NAVEGACIÓN PRINCIPAL -->
+    <header class="bg-regio-card border-b border-regio sticky top-0 z-40 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                
+                <div class="flex items-center space-x-3">
+                    <button onclick="toggleMobileMenu()" class="md:hidden p-2 text-slate-300 hover:text-white focus:outline-none">
+                        <i class="fa-solid fa-bars text-xl" id="menuIcon"></i>
+                    </button>
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-gas-pump text-amber-500 text-xl"></i>
+                        <span class="text-lg font-black tracking-wider text-white">REGIO <span class="text-amber-500">FUEL</span></span>
+                    </div>
+                </div>
+
+                <!-- Menú ESCRITORIO -->
+                <nav class="hidden md:flex space-x-1" id="navTabs">
+                    <button onclick="switchTab('dashboard')" id="tab-dashboard" class="px-3 py-2 rounded-lg text-sm font-semibold transition text-amber-500 bg-slate-900">
+                        <i class="fa-solid fa-chart-line mr-1.5"></i> Dashboard
+                    </button>
+                    <button onclick="switchTab('ventas')" id="tab-ventas" class="px-3 py-2 rounded-lg text-sm font-semibold transition text-slate-300 hover:text-white hover:bg-slate-800">
+                        <i class="fa-solid fa-cart-shopping mr-1.5"></i> Ventas
+                    </button>
+                    <button onclick="switchTab('entregas')" id="tab-entregas" class="px-3 py-2 rounded-lg text-sm font-semibold transition text-slate-300 hover:text-white hover:bg-slate-800">
+                        <i class="fa-solid fa-truck-fast mr-1.5"></i> Entregas
+                    </button>
+                    <button onclick="switchTab('clientes')" id="tab-clientes" class="px-3 py-2 rounded-lg text-sm font-semibold transition text-slate-300 hover:text-white hover:bg-slate-800">
+                        <i class="fa-solid fa-users mr-1.5"></i> Clientes
+                    </button>
+                    <button onclick="switchTab('agentes')" id="tab-agentes" class="admin-only px-3 py-2 rounded-lg text-sm font-semibold transition text-slate-300 hover:text-white hover:bg-slate-800">
+                        <i class="fa-solid fa-user-tie mr-1.5"></i> Agentes
+                    </button>
+                    <button onclick="switchTab('precios')" id="tab-precios" class="px-3 py-2 rounded-lg text-sm font-semibold transition text-slate-300 hover:text-white hover:bg-slate-800">
+                        <i class="fa-solid fa-tags mr-1.5"></i> Precios
+                    </button>
+                    <button onclick="switchTab('reportes')" id="tab-reportes" class="admin-only px-3 py-2 rounded-lg text-sm font-semibold transition text-slate-300 hover:text-white hover:bg-slate-800">
+                        <i class="fa-solid fa-file-invoice-dollar mr-1.5"></i> Reportes
+                    </button>
+                </nav>
+
+                <!-- Info Usuario -->
+                <div class="flex items-center space-x-2 sm:space-x-3">
+                    <div class="text-right hidden sm:block">
+                        <div id="loggedUserName" class="text-xs sm:text-sm font-bold text-white">Cargando...</div>
+                        <div id="loggedUserRole" class="text-[10px] sm:text-xs text-amber-400 font-medium">Rol</div>
+                    </div>
+                    <button onclick="abrirConfigModo()" class="p-2 text-slate-400 hover:text-amber-400 transition" title="Configuración de datos">
+                        <i class="fa-solid fa-gear text-base sm:text-lg"></i>
+                    </button>
+                    <button onclick="openModalSelfPass()" class="p-2 text-slate-400 hover:text-amber-400 transition" title="Cambiar contraseña">
+                        <i class="fa-solid fa-key text-base sm:text-lg"></i>
+                    </button>
+                    <button onclick="logout()" class="p-2 text-slate-400 hover:text-red-400 transition" title="Cerrar Sesión">
+                        <i class="fa-solid fa-right-from-bracket text-base sm:text-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MENÚ MÓVIL -->
+        <div id="mobileMenu" class="hidden md:hidden bg-slate-900 border-b border-regio px-4 pt-2 pb-4 space-y-1">
+            <button onclick="switchTabMobile('dashboard')" class="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 flex items-center">
+                <i class="fa-solid fa-chart-line w-6 text-amber-500"></i> Dashboard
+            </button>
+            <button onclick="switchTabMobile('ventas')" class="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 flex items-center">
+                <i class="fa-solid fa-cart-shopping w-6 text-amber-500"></i> Ventas
+            </button>
+            <button onclick="switchTabMobile('entregas')" class="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 flex items-center">
+                <i class="fa-solid fa-truck-fast w-6 text-amber-500"></i> Entregas
+            </button>
+            <button onclick="switchTabMobile('clientes')" class="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 flex items-center">
+                <i class="fa-solid fa-users w-6 text-amber-500"></i> Clientes
+            </button>
+            <button onclick="switchTabMobile('precios')" class="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 flex items-center">
+                <i class="fa-solid fa-tags w-6 text-amber-500"></i> Precios
+            </button>
+            <button onclick="switchTabMobile('agentes')" class="admin-only w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 flex items-center">
+                <i class="fa-solid fa-user-tie w-6 text-amber-500"></i> Agentes (Admin)
+            </button>
+            <button onclick="switchTabMobile('reportes')" class="admin-only w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 flex items-center">
+                <i class="fa-solid fa-file-invoice-dollar w-6 text-amber-500"></i> Reportes (Admin)
+            </button>
+        </div>
+    </header>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+
+        <!-- 1. DASHBOARD -->
+        <section id="sec-dashboard" class="space-y-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <h2 class="text-xl sm:text-2xl font-bold text-white">Dashboard Principal</h2>
+                <span id="dashRoleNotice" class="text-xs text-slate-400 bg-slate-800 px-3 py-1 rounded-full border border-regio">Vista General</span>
+            </div>
+
+            <!-- KPIs -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-regio-card p-4 sm:p-5 rounded-xl border border-regio shadow-md">
+                    <div class="flex justify-between items-center text-slate-400 text-xs sm:text-sm">
+                        <span>Ventas Acumuladas</span>
+                        <i class="fa-solid fa-dollar-sign text-emerald-400"></i>
+                    </div>
+                    <div id="kpiTotalVentas" class="text-xl sm:text-2xl font-black text-white mt-2">$0.00</div>
+                    <span class="text-xs text-emerald-400 font-semibold"><i class="fa-solid fa-circle-check"></i> Pesos Mexicanos (MXN)</span>
+                </div>
+                <div class="bg-regio-card p-4 sm:p-5 rounded-xl border border-regio shadow-md">
+                    <div class="flex justify-between items-center text-slate-400 text-xs sm:text-sm">
+                        <span>Litros Vendidos</span>
+                        <i class="fa-solid fa-droplet text-cyan-400"></i>
+                    </div>
+                    <div id="kpiTotalLitros" class="text-xl sm:text-2xl font-black text-white mt-2">0 Lts</div>
+                    <span class="text-xs text-cyan-400 font-semibold">Diésel & Gasolina</span>
+                </div>
+                <div class="bg-regio-card p-4 sm:p-5 rounded-xl border border-regio shadow-md">
+                    <div class="flex justify-between items-center text-slate-400 text-xs sm:text-sm">
+                        <span>Clientes Registrados</span>
+                        <i class="fa-solid fa-building-user text-amber-400"></i>
+                    </div>
+                    <div id="kpiTotalClientes" class="text-xl sm:text-2xl font-black text-white mt-2">0</div>
+                    <span class="text-xs text-amber-400 font-semibold">En catálogo</span>
+                </div>
+                <div class="bg-regio-card p-4 sm:p-5 rounded-xl border border-regio shadow-md">
+                    <div class="flex justify-between items-center text-slate-400 text-xs sm:text-sm">
+                        <span>Entregas Pendientes</span>
+                        <i class="fa-solid fa-truck-ramp-box text-orange-400"></i>
+                    </div>
+                    <div id="kpiEntregasPendientes" class="text-xl sm:text-2xl font-black text-white mt-2">0</div>
+                    <span class="text-xs text-orange-400 font-semibold">En tránsito / Detenidas</span>
+                </div>
+            </div>
+
+            <!-- SECCIÓN DE GRÁFICAS GENERALES Y POR AGENTE -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Gráfica 1: Venta General por Producto (Dinero $ vs Litros) -->
+                <div class="bg-regio-card p-4 sm:p-5 rounded-xl border border-regio shadow-lg">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-base sm:text-lg font-bold text-white flex items-center">
+                            <i class="fa-solid fa-chart-column text-amber-500 mr-2"></i> Venta Total de Combustible
+                        </h3>
+                        <span class="text-[10px] bg-slate-900 text-slate-400 px-2 py-1 rounded border border-regio">$ MXN vs Litros</span>
+                    </div>
+                    <div class="relative h-64 sm:h-72 w-full">
+                        <canvas id="chartVentaGeneral"></canvas>
+                    </div>
+                </div>
+
+                <!-- Gráfica 2: Ventas por Agente de Ventas ($ vs Litros) -->
+                <div class="bg-regio-card p-4 sm:p-5 rounded-xl border border-regio shadow-lg">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-base sm:text-lg font-bold text-white flex items-center">
+                            <i class="fa-solid fa-user-tie text-cyan-400 mr-2"></i> Ventas por Agente de Ventas
+                        </h3>
+                        <span class="text-[10px] bg-slate-900 text-slate-400 px-2 py-1 rounded border border-regio">Comparativo Agentes</span>
+                    </div>
+                    <div class="relative h-64 sm:h-72 w-full">
+                        <canvas id="chartVentasAgentes"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TABLAS SECUNDARIAS DASHBOARD -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-regio-card p-4 sm:p-5 rounded-xl border border-regio">
+                    <h3 class="text-base sm:text-lg font-bold text-white mb-4 flex items-center">
+                        <i class="fa-solid fa-triangle-exclamation text-amber-500 mr-2"></i> Clientes sin comprar (+15 días)
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs sm:text-sm">
+                            <thead class="text-xs text-slate-400 uppercase bg-slate-900">
+                                <tr>
+                                    <th class="p-2 sm:p-3">Cliente</th>
+                                    <th class="p-2 sm:p-3">Región</th>
+                                    <th class="p-2 sm:p-3">Días</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dashClientesInactivos" class="divide-y divide-regio text-slate-300"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="bg-regio-card p-4 sm:p-5 rounded-xl border border-regio">
+                    <h3 class="text-base sm:text-lg font-bold text-white mb-4 flex items-center">
+                        <i class="fa-solid fa-boxes-packing text-amber-500 mr-2"></i> Estatus de Entregas
+                    </h3>
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="bg-slate-900 p-3 rounded-lg border border-emerald-500/30 text-center">
+                            <div class="text-xs text-slate-400">Entregadas</div>
+                            <div id="dashEntregadas" class="text-lg sm:text-xl font-bold text-emerald-400">0</div>
+                        </div>
+                        <div class="bg-slate-900 p-3 rounded-lg border border-amber-500/30 text-center">
+                            <div class="text-xs text-slate-400">En Tránsito</div>
+                            <div id="dashEnTransito" class="text-lg sm:text-xl font-bold text-amber-400">0</div>
+                        </div>
+                        <div class="bg-slate-900 p-3 rounded-lg border border-orange-500/30 text-center">
+                            <div class="text-xs text-slate-400">Detenidas</div>
+                            <div id="dashDetenidas" class="text-lg sm:text-xl font-bold text-orange-400">0</div>
+                        </div>
+                        <div class="bg-slate-900 p-3 rounded-lg border border-red-500/30 text-center">
+                            <div class="text-xs text-slate-400">Contratiempos</div>
+                            <div id="dashContratiempos" class="text-lg sm:text-xl font-bold text-red-400">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. VENTAS -->
+        <section id="sec-ventas" class="hidden space-y-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl sm:text-2xl font-bold text-white">Registro de Ventas</h2>
+                <button onclick="openModalVenta()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm transition">
+                    <i class="fa-solid fa-plus mr-1"></i> Nueva Venta
+                </button>
+            </div>
+
+            <div class="bg-regio-card rounded-xl border border-regio overflow-hidden">
+                <div class="p-3 sm:p-4 bg-slate-900 border-b border-regio">
+                    <input type="text" id="searchVenta" oninput="renderVentas()" placeholder="Buscar cliente o folio..." class="bg-slate-800 border border-regio px-3 py-1.5 rounded-lg text-xs sm:text-sm text-white focus:outline-none focus:border-amber-500 w-full sm:w-64">
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs sm:text-sm">
+                        <thead class="text-[10px] sm:text-xs text-slate-400 uppercase bg-slate-900/50">
+                            <tr>
+                                <th class="p-2 sm:p-3">Folio/Fecha</th>
+                                <th class="p-2 sm:p-3">Cliente</th>
+                                <th class="p-2 sm:p-3">Producto</th>
+                                <th class="p-2 sm:p-3">Litros</th>
+                                <th class="p-2 sm:p-3">Total</th>
+                                <th class="p-2 sm:p-3">Estatus</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaVentas" class="divide-y divide-regio text-slate-300"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. ENTREGAS -->
+        <section id="sec-entregas" class="hidden space-y-6">
+            <h2 class="text-xl sm:text-2xl font-bold text-white">Seguimiento de Entregas</h2>
+            <div class="bg-regio-card rounded-xl border border-regio overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs sm:text-sm">
+                        <thead class="text-[10px] sm:text-xs text-slate-400 uppercase bg-slate-900">
+                            <tr>
+                                <th class="p-2 sm:p-3">Folio</th>
+                                <th class="p-2 sm:p-3">Cliente</th>
+                                <th class="p-2 sm:p-3">Producto</th>
+                                <th class="p-2 sm:p-3">Estatus</th>
+                                <th class="p-2 sm:p-3">Notas</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaEntregas" class="divide-y divide-regio text-slate-300"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. CLIENTES -->
+        <section id="sec-clientes" class="hidden space-y-6">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 class="text-xl sm:text-2xl font-bold text-white">Catálogo de Clientes</h2>
+                    <p class="text-xs text-slate-400 hidden sm:block">Consulta, edición y alta de clientes del sistema</p>
+                </div>
+                <button onclick="openModalCliente()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm transition">
+                    <i class="fa-solid fa-user-plus mr-1"></i> Nuevo Cliente
+                </button>
+            </div>
+            <div class="bg-regio-card rounded-xl border border-regio overflow-hidden">
+                <div class="p-3 sm:p-4 bg-slate-900 border-b border-regio">
+                    <input type="text" id="searchCliente" oninput="renderClientes()" placeholder="Buscar cliente, teléfono o región..." class="bg-slate-800 border border-regio px-3 py-1.5 rounded-lg text-xs sm:text-sm text-white focus:outline-none focus:border-amber-500 w-full sm:w-64">
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs sm:text-sm">
+                        <thead class="text-[10px] sm:text-xs text-slate-400 uppercase bg-slate-900">
+                            <tr>
+                                <th class="p-2 sm:p-3">Clave</th>
+                                <th class="p-2 sm:p-3">Cliente</th>
+                                <th class="p-2 sm:p-3">Teléfono</th>
+                                <th class="p-2 sm:p-3">Región</th>
+                                <th class="p-2 sm:p-3">Días Sin Comprar</th>
+                                <th class="p-2 sm:p-3 col-acciones-cliente hidden">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaClientes" class="divide-y divide-regio text-slate-300"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. AGENTES -->
+        <section id="sec-agentes" class="admin-only hidden space-y-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl sm:text-2xl font-bold text-white">Agentes y Usuarios</h2>
+                <button onclick="openModalAgente()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm transition">
+                    <i class="fa-solid fa-user-gear mr-1"></i> Crear Usuario
+                </button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="cardsAgentes"></div>
+        </section>
+
+        <!-- 6. PRECIOS -->
+        <section id="sec-precios" class="hidden space-y-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl sm:text-2xl font-bold text-white">Precios Oficiales</h2>
+                <button onclick="openModalEditarPrecios()" class="admin-only bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm transition">
+                    <i class="fa-solid fa-pen-to-square mr-1"></i> Editar Precios
+                </button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-regio-card p-6 rounded-xl border border-regio text-center shadow-lg">
+                    <i class="fa-solid fa-truck-monster text-amber-500 text-4xl sm:text-5xl mb-3"></i>
+                    <h3 class="text-lg sm:text-xl font-bold text-white">Diésel Industrial / Comercial</h3>
+                    <div id="precioDieselRef" class="text-3xl sm:text-4xl font-black text-amber-400 my-3">$24.80 / Lt</div>
+                    <p class="text-xs text-slate-400">Precio diario fijado por administración</p>
+                </div>
+                <div class="bg-regio-card p-6 rounded-xl border border-regio text-center shadow-lg">
+                    <i class="fa-solid fa-car text-cyan-400 text-4xl sm:text-5xl mb-3"></i>
+                    <h3 class="text-lg sm:text-xl font-bold text-white">Gasolina Regular / Magna</h3>
+                    <div id="precioGasolinaRef" class="text-3xl sm:text-4xl font-black text-cyan-400 my-3">$23.50 / Lt</div>
+                    <p class="text-xs text-slate-400">Precio diario fijado por administración</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 7. REPORTES -->
+        <section id="sec-reportes" class="admin-only hidden space-y-6">
+            <div class="flex flex-col md:flex-row justify-between md:items-center gap-4 border-b border-regio pb-4">
+                <div>
+                    <h2 class="text-xl sm:text-2xl font-bold text-white">Reportes de Ventas</h2>
+                    <p class="text-xs text-slate-400">Resumen y métricas de desempeño</p>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <select id="repMes" onchange="generarReporteMensual()" class="bg-slate-900 border border-regio rounded-lg px-2 sm:px-3 py-1.5 text-xs sm:text-sm text-white">
+                        <option value="1">Enero</option>
+                        <option value="2">Febrero</option>
+                        <option value="3">Marzo</option>
+                        <option value="4">Abril</option>
+                        <option value="5">Mayo</option>
+                        <option value="6">Junio</option>
+                        <option value="7">Julio</option>
+                        <option value="8">Agosto</option>
+                        <option value="9">Septiembre</option>
+                        <option value="10" selected>Octubre</option>
+                        <option value="11">Noviembre</option>
+                        <option value="12">Diciembre</option>
+                    </select>
+
+                    <select id="repAnio" onchange="generarReporteMensual()" class="bg-slate-900 border border-regio rounded-lg px-2 sm:px-3 py-1.5 text-xs sm:text-sm text-white">
+                        <option value="2026" selected>2026</option>
+                        <option value="2025">2025</option>
+                    </select>
+
+                    <select id="repAgente" onchange="generarReporteMensual()" class="bg-slate-900 border border-regio rounded-lg px-2 sm:px-3 py-1.5 text-xs sm:text-sm text-white">
+                        <option value="TODOS">Todos los vendedores</option>
+                    </select>
+
+                    <button onclick="exportarExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs sm:text-sm transition">
+                        <i class="fa-solid fa-file-excel mr-1"></i> Excel
+                    </button>
+                    <button onclick="window.print()" class="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs sm:text-sm transition">
+                        <i class="fa-solid fa-file-pdf mr-1"></i> PDF
+                    </button>
+                </div>
+            </div>
+
+            <div id="printArea" class="bg-regio-card p-4 sm:p-6 rounded-xl border border-regio print-card">
+                <div class="flex justify-between items-center mb-6 pb-4 border-b border-regio">
+                    <div>
+                        <h1 class="text-xl sm:text-2xl font-black text-white print-text">REGIO <span class="text-amber-500">FUEL</span></h1>
+                        <p class="text-xs text-slate-400 print-text">Informe Consolidado de Ventas</p>
+                    </div>
+                    <div class="text-right text-xs text-slate-300 print-text">
+                        <p><b class="text-amber-400">Período:</b> <span id="lblPeriodoReporte">Octubre 2026</span></p>
+                        <p><b class="text-amber-400">Vendedor:</b> <span id="lblVendedorReporte">Todos</span></p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2 sm:gap-4 mb-6">
+                    <div class="bg-slate-900 p-3 sm:p-4 rounded-lg text-center border border-regio">
+                        <div class="text-[10px] sm:text-xs text-slate-400">Total $ Vendido</div>
+                        <div id="repTotalMonto" class="text-sm sm:text-xl font-black text-emerald-400">$0.00</div>
+                    </div>
+                    <div class="bg-slate-900 p-3 sm:p-4 rounded-lg text-center border border-regio">
+                        <div class="text-[10px] sm:text-xs text-slate-400">Litros Totales</div>
+                        <div id="repTotalLitros" class="text-sm sm:text-xl font-black text-cyan-400">0 Lts</div>
+                    </div>
+                    <div class="bg-slate-900 p-3 sm:p-4 rounded-lg text-center border border-regio">
+                        <div class="text-[10px] sm:text-xs text-slate-400">No. Ventas</div>
+                        <div id="repTotalTrans" class="text-sm sm:text-xl font-black text-amber-400">0</div>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs sm:text-sm border-collapse">
+                        <thead class="text-[10px] sm:text-xs uppercase bg-slate-900 text-slate-300">
+                            <tr>
+                                <th class="p-2 border-b border-regio">Folio</th>
+                                <th class="p-2 border-b border-regio">Fecha</th>
+                                <th class="p-2 border-b border-regio">Cliente</th>
+                                <th class="p-2 border-b border-regio">Litros</th>
+                                <th class="p-2 border-b border-regio">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaReporte" class="divide-y divide-regio text-slate-300 print-text"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- BOTTOM NAV MÓVIL -->
+    <div class="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-regio flex justify-around p-2 z-40 no-print">
+        <button onclick="switchTab('dashboard')" class="flex flex-col items-center text-slate-400 hover:text-amber-500 text-[10px]">
+            <i class="fa-solid fa-chart-line text-base mb-0.5"></i> Dashboard
+        </button>
+        <button onclick="switchTab('ventas')" class="flex flex-col items-center text-slate-400 hover:text-amber-500 text-[10px]">
+            <i class="fa-solid fa-cart-shopping text-base mb-0.5"></i> Ventas
+        </button>
+        <button onclick="switchTab('entregas')" class="flex flex-col items-center text-slate-400 hover:text-amber-500 text-[10px]">
+            <i class="fa-solid fa-truck-fast text-base mb-0.5"></i> Entregas
+        </button>
+        <button onclick="switchTab('clientes')" class="flex flex-col items-center text-slate-400 hover:text-amber-500 text-[10px]">
+            <i class="fa-solid fa-users text-base mb-0.5"></i> Clientes
+        </button>
+    </div>
+
+    <!-- MODALES -->
+    <div id="modalForgotPass" class="fixed inset-0 bg-black/70 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-regio-card border border-regio rounded-xl p-5 sm:p-6 max-w-sm w-full">
+            <h3 class="text-base sm:text-lg font-bold text-white mb-2">Restablecer Contraseña</h3>
+            <p class="text-xs text-slate-400 mb-4">Ingresa tu usuario y define una nueva contraseña.</p>
+            <form onsubmit="event.preventDefault(); procesarRestablecerPass();" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Usuario</label>
+                    <input type="text" id="forgotUser" required class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm" placeholder="Ej: carlos.mora">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Nueva Contraseña</label>
+                    <input type="password" id="forgotNewPass" required class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm">
+                </div>
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="closeModal('modalForgotPass')" class="px-3 py-1.5 bg-slate-700 text-white rounded text-xs">Cancelar</button>
+                    <button type="submit" class="px-3 py-1.5 bg-amber-500 text-slate-950 font-bold rounded text-xs">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modalSelfPass" class="fixed inset-0 bg-black/70 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-regio-card border border-regio rounded-xl p-5 sm:p-6 max-w-sm w-full">
+            <h3 class="text-base sm:text-lg font-bold text-white mb-4">Cambiar Mi Contraseña</h3>
+            <form onsubmit="event.preventDefault(); guardarMiPassword();" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Nueva Contraseña</label>
+                    <input type="password" id="selfNewPass" required class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm">
+                </div>
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="closeModal('modalSelfPass')" class="px-3 py-1.5 bg-slate-700 text-white rounded text-xs">Cancelar</button>
+                    <button type="submit" class="px-3 py-1.5 bg-amber-500 text-slate-950 font-bold rounded text-xs">Actualizar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modalPrecios" class="fixed inset-0 bg-black/70 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-regio-card border border-regio rounded-xl p-5 sm:p-6 max-w-sm w-full">
+            <h3 class="text-base sm:text-lg font-bold text-white mb-4">Modificar Precios del Día</h3>
+            <form onsubmit="event.preventDefault(); guardarPreciosDiarios();" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Diésel ($/Lt)</label>
+                    <input type="number" step="0.01" id="inputPrecioDiesel" required class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Gasolina Regular ($/Lt)</label>
+                    <input type="number" step="0.01" id="inputPrecioGasolina" required class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm">
+                </div>
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="closeModal('modalPrecios')" class="px-3 py-1.5 bg-slate-700 text-white rounded text-xs">Cancelar</button>
+                    <button type="submit" class="px-3 py-1.5 bg-amber-500 text-slate-950 font-bold rounded text-xs">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modalVenta" class="fixed inset-0 bg-black/70 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-regio-card border border-regio rounded-xl p-5 sm:p-6 max-w-md w-full">
+            <h3 class="text-lg sm:text-xl font-bold text-white mb-4">Registrar Venta</h3>
+            <form onsubmit="event.preventDefault(); guardarVenta();" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Cliente</label>
+                    <select id="vtaCliente" required class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm"></select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Producto</label>
+                    <select id="vtaProducto" onchange="autoCargarPrecioReferencia()" required class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm">
+                        <option value="Diésel">Diésel</option>
+                        <option value="Gasolina Regular">Gasolina Regular</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-2 sm:gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Litros</label>
+                        <input type="number" step="0.01" id="vtaLitros" oninput="calcTotalVenta()" required class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Precio ($/Lt)</label>
+                        <input type="number" step="0.01" id="vtaPrecio" oninput="calcTotalVenta()" required class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Total de Venta ($)</label>
+                    <input type="text" id="vtaTotal" readonly class="w-full bg-slate-800 font-bold text-amber-400 border border-regio rounded px-3 py-2 text-xs sm:text-sm">
+                </div>
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="closeModal('modalVenta')" class="px-3 py-1.5 bg-slate-700 text-white rounded text-xs">Cancelar</button>
+                    <button type="submit" class="px-3 py-1.5 bg-amber-500 text-slate-950 font-bold rounded text-xs">Registrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modalAgente" class="fixed inset-0 bg-black/70 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-regio-card border border-regio rounded-xl p-5 sm:p-6 max-w-md w-full">
+            <h3 id="modalAgenteTitulo" class="text-lg sm:text-xl font-bold text-white mb-4">Gestión de Usuario</h3>
+            <form onsubmit="event.preventDefault(); guardarAgente();" class="space-y-3">
+                <input type="hidden" id="agenteEditId">
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Nombre Completo</label>
+                    <input type="text" id="agenteNombre" required class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm">
+                </div>
+                <div class="grid grid-cols-2 gap-2 sm:gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Usuario</label>
+                        <input type="text" id="agenteUser" required class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Contraseña</label>
+                        <input type="text" id="agentePass" required class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Región / Zona</label>
+                    <input type="text" id="agenteRegion" required class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm" placeholder="Ej: San Pedro">
+                </div>
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="closeModal('modalAgente')" class="px-3 py-1.5 bg-slate-700 text-white rounded text-xs">Cancelar</button>
+                    <button type="submit" class="px-3 py-1.5 bg-amber-500 text-slate-950 font-bold rounded text-xs">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL CLIENTE (SOPORTA CREACIÓN Y EDICIÓN) -->
+    <div id="modalCliente" class="fixed inset-0 bg-black/70 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-regio-card border border-regio rounded-xl p-5 sm:p-6 max-w-md w-full">
+            <h3 id="modalClienteTitulo" class="text-lg sm:text-xl font-bold text-white mb-4">Registrar Nuevo Cliente</h3>
+            <form onsubmit="event.preventDefault(); guardarCliente();" class="space-y-3">
+                <input type="hidden" id="cliEditIndex">
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Nombre o Razón Social</label>
+                    <input type="text" id="cliNombre" required class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm" placeholder="Ej: Autotransportes del Golfo">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Teléfono</label>
+                    <input type="tel" id="cliTelefono" required class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm" placeholder="Ej: 811 234 5678">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Ciudad o Región</label>
+                    <input type="text" id="cliRegion" required class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm" placeholder="Ej: Cerro Azul, Ver.">
+                </div>
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="closeModal('modalCliente')" class="px-3 py-1.5 bg-slate-700 text-white rounded text-xs">Cancelar</button>
+                    <button type="submit" class="px-3 py-1.5 bg-amber-500 text-slate-950 font-bold rounded text-xs">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- MODAL CONFIGURACIÓN DE MODO (Local / Firebase) -->
+    <div id="modalConfigModo" class="fixed inset-0 bg-black/70 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-regio-card border border-regio rounded-xl p-5 sm:p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <h3 class="text-lg sm:text-xl font-bold text-white mb-2"><i class="fa-solid fa-gear mr-2 text-amber-500"></i>Configuración de Datos</h3>
+            <p class="text-xs text-slate-400 mb-4">Elige cómo se guardan y sincronizan los datos de la aplicación.</p>
+            
+            <div class="mb-4">
+                <label class="block text-xs font-bold text-slate-300 mb-1">Modo de almacenamiento</label>
+                <select id="configModoSelect" onchange="document.getElementById('firebaseConfigArea').classList.toggle('hidden', this.value !== 'firebase')" class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-sm">
+                    <option value="local">Local (solo este navegador / equipo)</option>
+                    <option value="firebase">Firebase (Nube - Tiempo Real entre todos)</option>
+                </select>
+            </div>
+
+            <div id="firebaseConfigArea" class="hidden space-y-3 mb-4 p-3 bg-slate-900 rounded-lg border border-regio">
+                <div class="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 mb-2">
+                    <p class="text-xs text-amber-300 font-semibold mb-1"><i class="fa-solid fa-circle-info mr-1"></i> Cómo obtener estos datos:</p>
+                    <ol class="text-[11px] text-slate-300 space-y-0.5 list-decimal list-inside">
+                        <li>Entra a <b>console.firebase.google.com</b></li>
+                        <li>Crea o abre tu proyecto → ícono <b>&lt;/&gt;</b> (Web)</li>
+                        <li>Copia el objeto <b>firebaseConfig</b></li>
+                        <li>Pégalo abajo o llena los campos uno por uno</li>
+                    </ol>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Pegar configuración completa (opcional)</label>
+                    <textarea id="fbPasteAll" rows="4" class="w-full bg-slate-800 border border-regio rounded px-3 py-1.5 text-white text-xs font-mono" placeholder='Pega aquí todo el objeto:&#10;{&#10;  apiKey: "AIza...",&#10;  authDomain: "...",&#10;  ...&#10;}'></textarea>
+                    <button type="button" onclick="parseFirebasePaste()" class="mt-1.5 px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded text-xs">
+                        <i class="fa-solid fa-magic mr-1"></i> Extraer datos del texto
+                    </button>
+                </div>
+
+                <div class="border-t border-regio pt-3 space-y-2">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">API Key</label>
+                        <input type="text" id="fbApiKey" class="w-full bg-slate-800 border border-regio rounded px-3 py-1.5 text-white text-xs" placeholder="AIzaSy...">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Auth Domain</label>
+                        <input type="text" id="fbAuthDomain" class="w-full bg-slate-800 border border-regio rounded px-3 py-1.5 text-white text-xs" placeholder="proyecto.firebaseapp.com">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Project ID</label>
+                        <input type="text" id="fbProjectId" class="w-full bg-slate-800 border border-regio rounded px-3 py-1.5 text-white text-xs" placeholder="mi-proyecto-id">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Storage Bucket</label>
+                        <input type="text" id="fbStorageBucket" class="w-full bg-slate-800 border border-regio rounded px-3 py-1.5 text-white text-xs" placeholder="proyecto.appspot.com">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Messaging Sender ID</label>
+                        <input type="text" id="fbMessagingSenderId" class="w-full bg-slate-800 border border-regio rounded px-3 py-1.5 text-white text-xs" placeholder="123456789012">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">App ID</label>
+                        <input type="text" id="fbAppId" class="w-full bg-slate-800 border border-regio rounded px-3 py-1.5 text-white text-xs" placeholder="1:123456789:web:abcdef">
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap gap-2 mb-4">
+                <button type="button" onclick="exportarRespaldo()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs">
+                    <i class="fa-solid fa-download mr-1"></i> Exportar Respaldo
+                </button>
+                <button type="button" onclick="importarRespaldo()" class="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded text-xs">
+                    <i class="fa-solid fa-upload mr-1"></i> Importar Respaldo
+                </button>
+            </div>
+
+            <div class="flex justify-end space-x-2 pt-2 border-t border-regio">
+                <button type="button" onclick="closeModal('modalConfigModo')" class="px-3 py-1.5 bg-slate-700 text-white rounded text-xs">Cancelar</button>
+                <button type="button" onclick="guardarConfigModo()" class="px-3 py-1.5 bg-amber-500 text-slate-950 font-bold rounded text-xs">Guardar Configuración</button>
+            </div>
+        </div>
+    </div>
+
+<!-- HYBRID DATA LAYER: LOCAL + FIREBASE -->
+    <script type="module">
+        // ==================== HYBRID DATA LAYER ====================
+        // Soporta MODO LOCAL (Electron / localStorage) y MODO FIREBASE
+
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { 
+            getFirestore, collection, onSnapshot, doc, setDoc, addDoc, updateDoc, deleteDoc 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // Estado global
+        window.preciosHoy = { diesel: 24.80, gasolina: 23.50 };
+        window.usuarios = [];
+        window.clientes = [];
+        window.ventas = [];
+        window.currentUser = null;
+        window.dataMode = 'local'; // 'local' | 'firebase'
+        window.firebaseConfig = null;
+        window.db = null;
+        window.firebaseReady = false;
+
+        // Detectar si estamos en Electron
+        const isElectron = !!(window.electronAPI);
+
+        // ===== LOCAL STORAGE HELPERS =====
+        async function loadFromLocal() {
+            if (isElectron) {
+                const data = await window.electronAPI.loadData();
+                return data;
+            }
+            // Fallback localStorage (navegador)
+            const raw = localStorage.getItem('regioFuelData');
+            if (raw) {
+                try { return JSON.parse(raw); } catch(e) {}
+            }
+            return getDefaultData();
+        }
+
+        function getDefaultData() {
+            return {
+                preciosHoy: { diesel: 24.80, gasolina: 23.50 },
+                usuarios: [
+                    { id: 1, nombre: 'Administrador General', user: 'admin', pass: '123', rol: 'Admin', region: 'General' },
+                    { id: 2, nombre: 'Carlos Mora', user: 'carlos.mora', pass: '123', rol: 'Agente', region: 'Monterrey Norte' },
+                    { id: 3, nombre: 'Ana Torres', user: 'ana.torres', pass: '123', rol: 'Agente', region: 'San Pedro' }
+                ],
+                clientes: [
+                    { id: 'RF-CLI-001', nombre: 'Transportes del Norte S.A.', telefono: '818-555-0192', region: 'Monterrey Norte', agente: 'Carlos Mora', ultimaCompra: '2026-10-01' },
+                    { id: 'RF-CLI-002', nombre: 'Constructora Regiomontana', telefono: '811-444-9821', region: 'San Pedro', agente: 'Ana Torres', ultimaCompra: '2026-09-15' },
+                    { id: 'RF-CLI-003', nombre: 'Flotillas Cerro Azul', telefono: '785-123-4567', region: 'Cerro Azul, Ver.', agente: 'Carlos Mora', ultimaCompra: '2026-08-20' }
+                ],
+                ventas: [
+                    { id: 'RF-VTA-1001', fecha: '2026-10-01', cliente: 'Transportes del Norte S.A.', vendedor: 'Carlos Mora', producto: 'Diésel', litros: 5000, precio: 24.80, total: 124000, estatus: 'Entregada', obs: 'Entregado en planta' },
+                    { id: 'RF-VTA-1002', fecha: '2026-10-03', cliente: 'Constructora Regiomontana', vendedor: 'Ana Torres', producto: 'Gasolina Regular', litros: 3000, precio: 23.50, total: 70500, estatus: 'En Tránsito', obs: 'Patios San Pedro' },
+                    { id: 'RF-VTA-1003', fecha: '2026-10-05', cliente: 'Flotillas Cerro Azul', vendedor: 'Carlos Mora', producto: 'Diésel', litros: 8000, precio: 24.80, total: 198400, estatus: 'En Tránsito', obs: 'Tanque principal' }
+                ],
+                modo: 'local',
+                firebaseConfig: null
+            };
+        }
+
+        async function saveToLocal() {
+            const data = {
+                preciosHoy: window.preciosHoy,
+                usuarios: window.usuarios,
+                clientes: window.clientes,
+                ventas: window.ventas,
+                modo: window.dataMode,
+                firebaseConfig: window.firebaseConfig
+            };
+            if (isElectron) {
+                return await window.electronAPI.saveData(data);
+            }
+            localStorage.setItem('regioFuelData', JSON.stringify(data));
+            return true;
+        }
+
+        // ===== FIREBASE HELPERS =====
+        function initFirebase(config) {
+            try {
+                const app = initializeApp(config);
+                window.db = getFirestore(app);
+                window.firebaseReady = true;
+                return true;
+            } catch (e) {
+                console.error('Firebase init error:', e);
+                window.firebaseReady = false;
+                return false;
+            }
+        }
+
+        function startFirebaseListeners() {
+            if (!window.db) return;
+
+            // Precios
+            onSnapshot(doc(window.db, "configuracion", "precios"), (docSnap) => {
+                if (docSnap.exists()) {
+                    window.preciosHoy = docSnap.data();
+                } else {
+                    setDoc(doc(window.db, "configuracion", "precios"), window.preciosHoy);
+                }
+                if (typeof actualizarVistaPrecios === 'function') actualizarVistaPrecios();
+            });
+
+            // Usuarios
+            onSnapshot(collection(window.db, "usuarios"), (snapshot) => {
+                window.usuarios = snapshot.docs.map(d => ({ idDoc: d.id, ...d.data() }));
+                if (window.usuarios.length === 0) {
+                    const iniciales = getDefaultData().usuarios;
+                    iniciales.forEach(u => addDoc(collection(window.db, "usuarios"), u));
+                }
+                if (window.currentUser) {
+                    if (typeof renderAgentes === 'function') renderAgentes();
+                    if (typeof poblardropdowns === 'function') poblardropdowns();
+                    if (typeof renderDashboard === 'function') renderDashboard();
+                }
+            });
+
+            // Clientes
+            onSnapshot(collection(window.db, "clientes"), (snapshot) => {
+                window.clientes = snapshot.docs.map(d => ({ idDoc: d.id, ...d.data() }));
+                if (window.clientes.length === 0) {
+                    getDefaultData().clientes.forEach(c => addDoc(collection(window.db, "clientes"), c));
+                }
+                if (window.currentUser) {
+                    if (typeof renderClientes === 'function') renderClientes();
+                    if (typeof renderDashboard === 'function') renderDashboard();
+                }
+            });
+
+            // Ventas
+            onSnapshot(collection(window.db, "ventas"), (snapshot) => {
+                window.ventas = snapshot.docs.map(d => ({ idDoc: d.id, ...d.data() }));
+                if (window.ventas.length === 0) {
+                    getDefaultData().ventas.forEach(v => addDoc(collection(window.db, "ventas"), v));
+                }
+                if (window.currentUser) {
+                    if (typeof renderDashboard === 'function') renderDashboard();
+                    if (typeof renderVentas === 'function') renderVentas();
+                    if (typeof renderEntregas === 'function') renderEntregas();
+                    if (typeof generarReporteMensual === 'function') generarReporteMensual();
+                }
+            });
+        }
+
+        // ===== INIT =====
+        async function initDataLayer() {
+            const data = await loadFromLocal();
+            window.preciosHoy = data.preciosHoy || window.preciosHoy;
+            window.usuarios = data.usuarios || [];
+            window.clientes = data.clientes || [];
+            window.ventas = data.ventas || [];
+            window.dataMode = data.modo || 'local';
+            window.firebaseConfig = data.firebaseConfig || null;
+
+            if (window.dataMode === 'firebase' && window.firebaseConfig) {
+                if (initFirebase(window.firebaseConfig)) {
+                    startFirebaseListeners();
+                } else {
+                    window.dataMode = 'local';
+                    alert('Error al conectar con Firebase. Cambiando a modo Local.');
+                }
+            }
+            // En modo local los datos ya están cargados
+        }
+
+        // Llamar al iniciar
+        initDataLayer();
+
+        // ===== OPERACIONES DE ESCRITURA (híbridas) =====
+        window.handleLogin = function() {
+            const u = document.getElementById('loginUser').value.trim();
+            const p = document.getElementById('loginPass').value.trim();
+            const found = window.usuarios.find(x => x.user === u && x.pass === p);
+
+            if (found) {
+                window.currentUser = found;
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('loggedUserName').innerText = window.currentUser.nombre;
+                document.getElementById('loggedUserRole').innerText = window.currentUser.rol + (window.dataMode === 'local' ? ' (Local)' : ' (Firebase)');
+
+                if (window.currentUser.rol !== 'Admin') {
+                    document.querySelectorAll('.admin-only').forEach(e => e.classList.add('hidden'));
+                    document.getElementById('dashRoleNotice').innerText = 'Mis Resultados y Ventas';
+                } else {
+                    document.querySelectorAll('.admin-only').forEach(e => e.classList.remove('hidden'));
+                    document.getElementById('dashRoleNotice').innerText = 'Vista Consolidada (Empresa)';
+                }
+                initApp();
+            } else {
+                document.getElementById('loginError').classList.remove('hidden');
+            }
+        };
+
+        window.guardarPreciosDiarios = async function() {
+            const diesel = parseFloat(document.getElementById('inputPrecioDiesel').value) || 24.80;
+            const gasolina = parseFloat(document.getElementById('inputPrecioGasolina').value) || 23.50;
+            window.preciosHoy = { diesel, gasolina };
+
+            if (window.dataMode === 'firebase' && window.db) {
+                await setDoc(doc(window.db, "configuracion", "precios"), window.preciosHoy);
+            } else {
+                await saveToLocal();
+            }
+            actualizarVistaPrecios();
+            closeModal('modalPrecios');
+        };
+
+        window.guardarVenta = async function() {
+            const cli = document.getElementById('vtaCliente').value;
+            const prod = document.getElementById('vtaProducto').value;
+            const lts = parseFloat(document.getElementById('vtaLitros').value);
+            const precio = parseFloat(document.getElementById('vtaPrecio').value);
+            const tot = lts * precio;
+
+            const nueva = {
+                id: 'RF-VTA-' + (1000 + window.ventas.length + 1),
+                fecha: new Date().toISOString().split('T')[0],
+                cliente: cli,
+                vendedor: window.currentUser.nombre,
+                producto: prod,
+                litros: lts,
+                precio: precio,
+                total: tot,
+                estatus: 'En Tránsito',
+                obs: 'Orden registrada'
+            };
+
+            if (window.dataMode === 'firebase' && window.db) {
+                await addDoc(collection(window.db, "ventas"), nueva);
+                const cObj = window.clientes.find(x => x.nombre === cli);
+                if (cObj && cObj.idDoc) {
+                    await updateDoc(doc(window.db, "clientes", cObj.idDoc), {
+                        ultimaCompra: new Date().toISOString().split('T')[0]
+                    });
+                }
+            } else {
+                window.ventas.push(nueva);
+                const cObj = window.clientes.find(x => x.nombre === cli);
+                if (cObj) cObj.ultimaCompra = new Date().toISOString().split('T')[0];
+                await saveToLocal();
+                renderDashboard();
+                renderVentas();
+                renderEntregas();
+            }
+            closeModal('modalVenta');
+        };
+
+        window.cambiarEstatusEntrega = async function(idx, est) {
+            const vta = window.ventas[idx];
+            if (!vta) return;
+
+            if (window.dataMode === 'firebase' && window.db && vta.idDoc) {
+                await updateDoc(doc(window.db, "ventas", vta.idDoc), { estatus: est });
+            } else {
+                vta.estatus = est;
+                await saveToLocal();
+                renderEntregas();
+                renderDashboard();
+            }
+        };
+
+        window.guardarCliente = async function() {
+            const idx = document.getElementById('cliEditIndex').value;
+            const nom = document.getElementById('cliNombre').value.trim();
+            const tel = document.getElementById('cliTelefono').value.trim();
+            const reg = document.getElementById('cliRegion').value.trim();
+
+            if (!nom || !reg || !tel) {
+                alert('Por favor completa todos los campos requeridos.');
+                return;
+            }
+
+            if (idx !== '') {
+                const target = window.clientes[idx];
+                if (window.dataMode === 'firebase' && window.db && target?.idDoc) {
+                    await updateDoc(doc(window.db, "clientes", target.idDoc), { nombre: nom, telefono: tel, region: reg });
+                } else {
+                    target.nombre = nom;
+                    target.telefono = tel;
+                    target.region = reg;
+                    await saveToLocal();
+                    renderClientes();
+                    renderDashboard();
+                }
+            } else {
+                const nuevo = {
+                    id: 'RF-CLI-00' + (window.clientes.length + 1),
+                    nombre: nom,
+                    telefono: tel,
+                    region: reg,
+                    agente: window.currentUser.nombre,
+                    ultimaCompra: new Date().toISOString().split('T')[0]
+                };
+                if (window.dataMode === 'firebase' && window.db) {
+                    await addDoc(collection(window.db, "clientes"), nuevo);
+                } else {
+                    window.clientes.push(nuevo);
+                    await saveToLocal();
+                    renderClientes();
+                    renderDashboard();
+                }
+            }
+            closeModal('modalCliente');
+        };
+
+        window.eliminarCliente = async function(idx) {
+            const target = window.clientes[idx];
+            if (!target) return;
+            if (!confirm(`¿Está seguro de eliminar al cliente "${target.nombre}"?`)) return;
+
+            if (window.dataMode === 'firebase' && window.db && target.idDoc) {
+                await deleteDoc(doc(window.db, "clientes", target.idDoc));
+            } else {
+                window.clientes.splice(idx, 1);
+                await saveToLocal();
+                renderClientes();
+                renderDashboard();
+            }
+        };
+
+        window.guardarAgente = async function() {
+            const idx = document.getElementById('agenteEditId').value;
+            const nom = document.getElementById('agenteNombre').value.trim();
+            const usr = document.getElementById('agenteUser').value.trim();
+            const pas = document.getElementById('agentePass').value.trim();
+            const reg = document.getElementById('agenteRegion').value.trim();
+
+            if (idx !== '') {
+                const target = window.usuarios[idx];
+                if (window.dataMode === 'firebase' && window.db && target?.idDoc) {
+                    await updateDoc(doc(window.db, "usuarios", target.idDoc), { nombre: nom, user: usr, pass: pas, region: reg });
+                } else {
+                    target.nombre = nom; target.user = usr; target.pass = pas; target.region = reg;
+                    await saveToLocal();
+                    renderAgentes();
+                }
+            } else {
+                const nuevo = { id: Date.now(), nombre: nom, user: usr, pass: pas, rol: 'Agente', region: reg };
+                if (window.dataMode === 'firebase' && window.db) {
+                    await addDoc(collection(window.db, "usuarios"), nuevo);
+                } else {
+                    window.usuarios.push(nuevo);
+                    await saveToLocal();
+                    renderAgentes();
+                }
+            }
+            closeModal('modalAgente');
+        };
+
+        window.eliminarAgente = async function(idx) {
+            const target = window.usuarios[idx];
+            if (!target || target.user === 'admin') return;
+            if (!confirm(`¿Está seguro de eliminar al usuario ${target.nombre}?`)) return;
+
+            if (window.dataMode === 'firebase' && window.db && target.idDoc) {
+                await deleteDoc(doc(window.db, "usuarios", target.idDoc));
+            } else {
+                window.usuarios.splice(idx, 1);
+                await saveToLocal();
+                renderAgentes();
+            }
+        };
+
+        window.procesarRestablecerPass = async function() {
+            const usr = document.getElementById('forgotUser').value.trim();
+            const npass = document.getElementById('forgotNewPass').value.trim();
+            const found = window.usuarios.find(u => u.user.toLowerCase() === usr.toLowerCase());
+            if (found) {
+                found.pass = npass;
+                if (window.dataMode === 'firebase' && window.db && found.idDoc) {
+                    await updateDoc(doc(window.db, "usuarios", found.idDoc), { pass: npass });
+                } else {
+                    await saveToLocal();
+                }
+                alert(`Contraseña restablecida para el usuario ${found.user}.`);
+                closeModal('modalForgotPass');
+            } else {
+                alert('El usuario ingresado no existe.');
+            }
+        };
+
+        window.guardarMiPassword = async function() {
+            const np = document.getElementById('selfNewPass').value.trim();
+            if (window.currentUser && np) {
+                window.currentUser.pass = np;
+                if (window.dataMode === 'firebase' && window.db && window.currentUser.idDoc) {
+                    await updateDoc(doc(window.db, "usuarios", window.currentUser.idDoc), { pass: np });
+                } else {
+                    // Actualizar en el array también
+                    const u = window.usuarios.find(x => x.user === window.currentUser.user);
+                    if (u) u.pass = np;
+                    await saveToLocal();
+                }
+                alert('Tu contraseña ha sido actualizada.');
+                closeModal('modalSelfPass');
+            }
+        };
+
+        // ===== CONFIGURACIÓN DE MODO =====
+        window.parseFirebasePaste = function() {
+            const raw = document.getElementById('fbPasteAll').value.trim();
+            if (!raw) {
+                alert('Pega primero el objeto firebaseConfig de Firebase Console.');
+                return;
+            }
+            try {
+                // Extraer valores aunque venga con comentarios o formato JS
+                const get = (key) => {
+                    const re = new RegExp(key + '\\s*:\\s*["\']([^"\']+)["\']');
+                    const m = raw.match(re);
+                    return m ? m[1] : '';
+                };
+                document.getElementById('fbApiKey').value = get('apiKey');
+                document.getElementById('fbAuthDomain').value = get('authDomain');
+                document.getElementById('fbProjectId').value = get('projectId');
+                document.getElementById('fbStorageBucket').value = get('storageBucket');
+                document.getElementById('fbMessagingSenderId').value = get('messagingSenderId');
+                document.getElementById('fbAppId').value = get('appId');
+                if (!document.getElementById('fbApiKey').value) {
+                    alert('No se detectaron los datos. Copia el bloque completo desde Firebase Console.');
+                } else {
+                    alert('Datos extraídos correctamente. Revisa los campos y guarda.');
+                }
+            } catch (e) {
+                alert('Error al procesar el texto. Llena los campos manualmente.');
+            }
+        };
+
+        window.abrirConfigModo = function() {
+            document.getElementById('configModoSelect').value = window.dataMode;
+            document.getElementById('firebaseConfigArea').classList.toggle('hidden', window.dataMode !== 'firebase');
+            if (window.firebaseConfig) {
+                document.getElementById('fbApiKey').value = window.firebaseConfig.apiKey || '';
+                document.getElementById('fbAuthDomain').value = window.firebaseConfig.authDomain || '';
+                document.getElementById('fbProjectId').value = window.firebaseConfig.projectId || '';
+                document.getElementById('fbStorageBucket').value = window.firebaseConfig.storageBucket || '';
+                document.getElementById('fbMessagingSenderId').value = window.firebaseConfig.messagingSenderId || '';
+                document.getElementById('fbAppId').value = window.firebaseConfig.appId || '';
+            }
+            document.getElementById('modalConfigModo').classList.remove('hidden');
+        };
+
+        window.guardarConfigModo = async function() {
+            const nuevoModo = document.getElementById('configModoSelect').value;
+            window.dataMode = nuevoModo;
+
+            if (nuevoModo === 'firebase') {
+                window.firebaseConfig = {
+                    apiKey: document.getElementById('fbApiKey').value.trim(),
+                    authDomain: document.getElementById('fbAuthDomain').value.trim(),
+                    projectId: document.getElementById('fbProjectId').value.trim(),
+                    storageBucket: document.getElementById('fbStorageBucket').value.trim(),
+                    messagingSenderId: document.getElementById('fbMessagingSenderId').value.trim(),
+                    appId: document.getElementById('fbAppId').value.trim()
+                };
+                if (!window.firebaseConfig.apiKey || !window.firebaseConfig.projectId) {
+                    alert('Completa al menos API Key y Project ID de Firebase.');
+                    return;
+                }
+                if (initFirebase(window.firebaseConfig)) {
+                    startFirebaseListeners();
+                    alert('Modo Firebase activado. Los datos se sincronizarán en la nube.');
+                } else {
+                    alert('Error al inicializar Firebase. Verifica la configuración.');
+                    window.dataMode = 'local';
+                }
+            } else {
+                alert('Modo Local activado. Los datos se guardan en este equipo.');
+            }
+
+            await saveToLocal();
+            closeModal('modalConfigModo');
+            if (window.currentUser) {
+                document.getElementById('loggedUserRole').innerText = window.currentUser.rol + (window.dataMode === 'local' ? ' (Local)' : ' (Firebase)');
+            }
+        };
+
+        window.exportarRespaldo = async function() {
+            if (isElectron) {
+                const res = await window.electronAPI.exportBackup();
+                if (res.success) alert('Respaldo exportado correctamente.');
+            } else {
+                const data = {
+                    preciosHoy: window.preciosHoy,
+                    usuarios: window.usuarios,
+                    clientes: window.clientes,
+                    ventas: window.ventas,
+                    modo: window.dataMode
+                };
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `regio-fuel-backup-${new Date().toISOString().slice(0,10)}.json`;
+                a.click();
+            }
+        };
+
+        window.importarRespaldo = async function() {
+            if (isElectron) {
+                const res = await window.electronAPI.importBackup();
+                if (res.success) {
+                    window.preciosHoy = res.data.preciosHoy || window.preciosHoy;
+                    window.usuarios = res.data.usuarios || [];
+                    window.clientes = res.data.clientes || [];
+                    window.ventas = res.data.ventas || [];
+                    alert('Respaldo importado. Recarga la aplicación para ver los cambios.');
+                    location.reload();
+                }
+            } else {
+                alert('Usa la versión de escritorio para importar respaldos fácilmente, o carga el JSON manualmente.');
+            }
+        };
+    </script>
+    <!-- FUNCIONES DE UI, GRÁFICAS CHART.JS Y RENDERIZADO -->
+    <script>
+        // Instancias de Gráficas Chart.js
+        let chartVentaGeneralInstance = null;
+        let chartVentasAgentesInstance = null;
+
+        function toggleMobileMenu() {
+            document.getElementById('mobileMenu').classList.toggle('hidden');
+        }
+
+        function switchTabMobile(tab) {
+            switchTab(tab);
+            document.getElementById('mobileMenu').classList.add('hidden');
+        }
+
+        function logout() {
+            window.currentUser = null;
+            document.getElementById('loginScreen').classList.remove('hidden');
+        }
+
+        function openModalForgotPass() {
+            document.getElementById('forgotUser').value = '';
+            document.getElementById('forgotNewPass').value = '';
+            document.getElementById('modalForgotPass').classList.remove('hidden');
+        }
+
+        function openModalSelfPass() {
+            document.getElementById('selfNewPass').value = '';
+            document.getElementById('modalSelfPass').classList.remove('hidden');
+        }
+
+        function switchTab(tab) {
+            if((tab === 'reportes' || tab === 'agentes') && window.currentUser.rol !== 'Admin') {
+                return;
+            }
+
+            document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
+            document.getElementById('sec-' + tab).classList.remove('hidden');
+
+            document.querySelectorAll('#navTabs button').forEach(b => {
+                b.classList.remove('bg-slate-900', 'text-amber-500');
+                b.classList.add('text-slate-300');
+            });
+            const activeTab = document.getElementById('tab-' + tab);
+            if(activeTab) activeTab.classList.add('bg-slate-900', 'text-amber-500');
+
+            if(tab === 'dashboard') renderDashboard();
+            if(tab === 'ventas') renderVentas();
+            if(tab === 'entregas') renderEntregas();
+            if(tab === 'clientes') renderClientes();
+            if(tab === 'agentes') renderAgentes();
+            if(tab === 'reportes') generarReporteMensual();
+        }
+
+        function initApp() {
+            actualizarVistaPrecios();
+            renderDashboard();
+            poblardropdowns();
+            switchTab('dashboard');
+        }
+
+        function actualizarVistaPrecios() {
+            document.getElementById('precioDieselRef').innerText = `$${parseFloat(window.preciosHoy.diesel).toFixed(2)} / Lt`;
+            document.getElementById('precioGasolinaRef').innerText = `$${parseFloat(window.preciosHoy.gasolina).toFixed(2)} / Lt`;
+        }
+
+        function openModalEditarPrecios() {
+            document.getElementById('inputPrecioDiesel').value = window.preciosHoy.diesel;
+            document.getElementById('inputPrecioGasolina').value = window.preciosHoy.gasolina;
+            document.getElementById('modalPrecios').classList.remove('hidden');
+        }
+
+        function poblardropdowns() {
+            const sel = document.getElementById('repAgente');
+            if(sel && window.currentUser) {
+                sel.innerHTML = '';
+                if(window.currentUser.rol === 'Admin') {
+                    sel.innerHTML = '<option value="TODOS">Todos los vendedores</option>';
+                    window.usuarios.filter(u => u.rol === 'Agente').forEach(a => {
+                        sel.innerHTML += `<option value="${a.nombre}">${a.nombre}</option>`;
+                    });
+                }
+            }
+        }
+
+        // Renderizado del Dashboard y Gráficas
+        function renderDashboard() {
+            if (!window.currentUser) return;
+            const vtasPropias = window.ventas.filter(v => window.currentUser.rol === 'Admin' || v.vendedor === window.currentUser.nombre);
+            
+            const totVtas = vtasPropias.reduce((acc, v) => acc + (v.total || 0), 0);
+            const totLts = vtasPropias.reduce((acc, v) => acc + (v.litros || 0), 0);
+            const pendientes = vtasPropias.filter(v => v.estatus === 'En Tránsito' || v.estatus === 'Detenida').length;
+
+            document.getElementById('kpiTotalVentas').innerText = '$' + totVtas.toLocaleString('es-MX', {minimumFractionDigits: 2});
+            document.getElementById('kpiTotalLitros').innerText = totLts.toLocaleString() + ' Lts';
+            document.getElementById('kpiTotalClientes').innerText = window.clientes.length;
+            document.getElementById('kpiEntregasPendientes').innerText = pendientes;
+
+            // Clientes inactivos
+            const hoy = new Date();
+            const tb = document.getElementById('dashClientesInactivos');
+            tb.innerHTML = '';
+
+            window.clientes.forEach(c => {
+                const fComp = new Date(c.ultimaCompra);
+                const dias = Math.floor((hoy - fComp) / (1000 * 60 * 60 * 24));
+                if(dias >= 15) {
+                    tb.innerHTML += `
+                        <tr>
+                            <td class="p-2 sm:p-3 font-semibold">${c.nombre}</td>
+                            <td class="p-2 sm:p-3 text-slate-400">${c.region}</td>
+                            <td class="p-2 sm:p-3"><span class="px-2 py-0.5 rounded bg-red-500/20 text-red-400 font-bold">${isNaN(dias)?0:dias}d</span></td>
+                        </tr>
+                    `;
+                }
+            });
+
+            document.getElementById('dashEntregadas').innerText = vtasPropias.filter(v => v.estatus === 'Entregada').length;
+            document.getElementById('dashEnTransito').innerText = vtasPropias.filter(v => v.estatus === 'En Tránsito').length;
+            document.getElementById('dashDetenidas').innerText = vtasPropias.filter(v => v.estatus === 'Detenida').length;
+            document.getElementById('dashContratiempos').innerText = vtasPropias.filter(v => v.estatus === 'Contratiempo').length;
+
+            // Renderizar Gráficas
+            renderCharts(vtasPropias);
+        }
+
+        // Renderizado de Gráficas Chart.js
+        function renderCharts(vtasPropias) {
+            // --- GRÁFICA 1: Ventas por Producto ($ vs Lts) ---
+            let dieselLitros = 0, dieselDinero = 0;
+            let gasolinaLitros = 0, gasolinaDinero = 0;
+
+            vtasPropias.forEach(v => {
+                if(v.producto === 'Diésel') {
+                    dieselLitros += v.litros || 0;
+                    dieselDinero += v.total || 0;
+                } else if(v.producto === 'Gasolina Regular' || v.producto === 'Gasolina') {
+                    gasolinaLitros += v.litros || 0;
+                    gasolinaDinero += v.total || 0;
+                }
+            });
+
+            const ctxGeneral = document.getElementById('chartVentaGeneral')?.getContext('2d');
+            if(ctxGeneral) {
+                if(chartVentaGeneralInstance) chartVentaGeneralInstance.destroy();
+
+                chartVentaGeneralInstance = new Chart(ctxGeneral, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Diésel', 'Gasolina Regular'],
+                        datasets: [
+                            {
+                                label: 'Litros Vendidos (Lts)',
+                                data: [dieselLitros, gasolinaLitros],
+                                backgroundColor: 'rgba(6, 182, 212, 0.75)', // cyan
+                                borderColor: '#06b6d4',
+                                borderWidth: 1,
+                                yAxisID: 'yLitros'
+                            },
+                            {
+                                label: 'Monto Total ($ MXN)',
+                                data: [dieselDinero, gasolinaDinero],
+                                backgroundColor: 'rgba(245, 158, 11, 0.75)', // amber
+                                borderColor: '#f59e0b',
+                                borderWidth: 1,
+                                yAxisID: 'yDinero'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { labels: { color: '#cbd5e1', font: { size: 11 } } },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) label += ': ';
+                                        if (context.datasetIndex === 1) {
+                                            label += '$' + context.parsed.y.toLocaleString('es-MX', {minimumFractionDigits:2});
+                                        } else {
+                                            label += context.parsed.y.toLocaleString() + ' Lts';
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e3a5f' } },
+                            yLitros: {
+                                type: 'linear',
+                                position: 'left',
+                                title: { display: true, text: 'Litros (Lts)', color: '#06b6d4' },
+                                ticks: { color: '#06b6d4' },
+                                grid: { color: '#1e3a5f' }
+                            },
+                            yDinero: {
+                                type: 'linear',
+                                position: 'right',
+                                title: { display: true, text: 'Dinero ($ MXN)', color: '#f59e0b' },
+                                ticks: { color: '#f59e0b' },
+                                grid: { drawOnChartArea: false }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // --- GRÁFICA 2: Ventas por Agente ($ vs Lts) ---
+            const agentesMap = {};
+            
+            // Inicializar mapa con usuarios agentes
+            window.usuarios.filter(u => u.rol === 'Agente').forEach(a => {
+                agentesMap[a.nombre] = { litros: 0, dinero: 0 };
+            });
+
+            // Agrupar ventas
+            vtasPropias.forEach(v => {
+                const nombreAgente = v.vendedor || 'Desconocido';
+                if(!agentesMap[nombreAgente]) {
+                    agentesMap[nombreAgente] = { litros: 0, dinero: 0 };
+                }
+                agentesMap[nombreAgente].litros += v.litros || 0;
+                agentesMap[nombreAgente].dinero += v.total || 0;
+            });
+
+            const labelsAgentes = Object.keys(agentesMap);
+            const litrosAgentes = labelsAgentes.map(k => agentesMap[k].litros);
+            const dineroAgentes = labelsAgentes.map(k => agentesMap[k].dinero);
+
+            const ctxAgentes = document.getElementById('chartVentasAgentes')?.getContext('2d');
+            if(ctxAgentes) {
+                if(chartVentasAgentesInstance) chartVentasAgentesInstance.destroy();
+
+                chartVentasAgentesInstance = new Chart(ctxAgentes, {
+                    type: 'bar',
+                    data: {
+                        labels: labelsAgentes.length ? labelsAgentes : ['Sin Agentes'],
+                        datasets: [
+                            {
+                                label: 'Litros (Lts)',
+                                data: litrosAgentes.length ? litrosAgentes : [0],
+                                backgroundColor: 'rgba(16, 185, 129, 0.75)', // emerald
+                                borderColor: '#10b981',
+                                borderWidth: 1,
+                                yAxisID: 'y1'
+                            },
+                            {
+                                label: 'Total ($ MXN)',
+                                data: dineroAgentes.length ? dineroAgentes : [0],
+                                backgroundColor: 'rgba(59, 130, 246, 0.75)', // blue
+                                borderColor: '#3b82f6',
+                                borderWidth: 1,
+                                yAxisID: 'y2'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { labels: { color: '#cbd5e1', font: { size: 11 } } },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) label += ': ';
+                                        if (context.datasetIndex === 1) {
+                                            label += '$' + context.parsed.y.toLocaleString('es-MX', {minimumFractionDigits:2});
+                                        } else {
+                                            label += context.parsed.y.toLocaleString() + ' Lts';
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e3a5f' } },
+                            y1: {
+                                type: 'linear',
+                                position: 'left',
+                                title: { display: true, text: 'Litros', color: '#10b981' },
+                                ticks: { color: '#10b981' },
+                                grid: { color: '#1e3a5f' }
+                            },
+                            y2: {
+                                type: 'linear',
+                                position: 'right',
+                                title: { display: true, text: 'Dinero ($)', color: '#3b82f6' },
+                                ticks: { color: '#3b82f6' },
+                                grid: { drawOnChartArea: false }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function renderVentas() {
+            if (!window.currentUser) return;
+            const search = document.getElementById('searchVenta')?.value.toLowerCase() || '';
+            const tb = document.getElementById('tablaVentas');
+            tb.innerHTML = '';
+
+            const filtradas = window.ventas.filter(v => 
+                (window.currentUser.rol === 'Admin' || v.vendedor === window.currentUser.nombre) &&
+                (v.cliente.toLowerCase().includes(search) || v.id.toLowerCase().includes(search))
+            );
+
+            filtradas.forEach(v => {
+                tb.innerHTML += `
+                    <tr>
+                        <td class="p-2 sm:p-3 font-bold text-amber-400">${v.id}<br><span class="text-[10px] text-slate-400">${v.fecha}</span></td>
+                        <td class="p-2 sm:p-3 font-semibold text-white">${v.cliente}</td>
+                        <td class="p-2 sm:p-3">${v.producto}</td>
+                        <td class="p-2 sm:p-3">${(v.litros || 0).toLocaleString()} Lts</td>
+                        <td class="p-2 sm:p-3 font-bold text-emerald-400">$${(v.total || 0).toLocaleString('es-MX', {minimumFractionDigits:2})}</td>
+                        <td class="p-2 sm:p-3"><span class="px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-bold ${getBadgeEstatus(v.estatus)}">${v.estatus}</span></td>
+                    </tr>
+                `;
+            });
+        }
+
+        function getBadgeEstatus(e) {
+            if(e === 'Entregada') return 'bg-emerald-500/20 text-emerald-400';
+            if(e === 'En Tránsito') return 'bg-amber-500/20 text-amber-400';
+            if(e === 'Detenida') return 'bg-orange-500/20 text-orange-400';
+            return 'bg-red-500/20 text-red-400';
+        }
+
+        function openModalVenta() {
+            const sel = document.getElementById('vtaCliente');
+            sel.innerHTML = '';
+            window.clientes.forEach(c => {
+                sel.innerHTML += `<option value="${c.nombre}">${c.nombre}</option>`;
+            });
+            autoCargarPrecioReferencia();
+            document.getElementById('modalVenta').classList.remove('hidden');
+        }
+
+        function autoCargarPrecioReferencia() {
+            const prod = document.getElementById('vtaProducto').value;
+            document.getElementById('vtaPrecio').value = prod === 'Diésel' ? window.preciosHoy.diesel : window.preciosHoy.gasolina;
+            calcTotalVenta();
+        }
+
+        function calcTotalVenta() {
+            const lts = parseFloat(document.getElementById('vtaLitros').value) || 0;
+            const precio = parseFloat(document.getElementById('vtaPrecio').value) || 0;
+            document.getElementById('vtaTotal').value = '$' + (lts * precio).toLocaleString('es-MX', {minimumFractionDigits:2});
+        }
+
+        function renderEntregas() {
+            if (!window.currentUser) return;
+            const tb = document.getElementById('tablaEntregas');
+            tb.innerHTML = '';
+
+            window.ventas.forEach((v, idx) => {
+                if(window.currentUser.rol === 'Admin' || v.vendedor === window.currentUser.nombre) {
+                    tb.innerHTML += `
+                        <tr>
+                            <td class="p-2 sm:p-3 font-bold text-amber-400">${v.id}</td>
+                            <td class="p-2 sm:p-3 font-semibold text-white">${v.cliente}</td>
+                            <td class="p-2 sm:p-3">${v.producto}<br><span class="text-[10px] text-slate-400">${v.litros} Lts</span></td>
+                            <td class="p-2 sm:p-3">
+                                <select onchange="cambiarEstatusEntrega(${idx}, this.value)" class="bg-slate-900 border border-regio rounded px-1.5 py-1 text-[10px] sm:text-xs text-white">
+                                    <option value="En Tránsito" ${v.estatus==='En Tránsito'?'selected':''}>En Tránsito</option>
+                                    <option value="Entregada" ${v.estatus==='Entregada'?'selected':''}>Entregada</option>
+                                    <option value="Detenida" ${v.estatus==='Detenida'?'selected':''}>Detenida</option>
+                                    <option value="Contratiempo" ${v.estatus==='Contratiempo'?'selected':''}>Contratiempo</option>
+                                </select>
+                            </td>
+                            <td class="p-2 sm:p-3 text-[10px] text-slate-400">${v.obs || '-'}</td>
+                        </tr>
+                    `;
+                }
+            });
+        }
+
+        // Renderizado de la tabla de Clientes con Teléfono y Acciones para Admin
+        function renderClientes() {
+            const search = document.getElementById('searchCliente')?.value.toLowerCase() || '';
+            const hoy = new Date();
+            const tb = document.getElementById('tablaClientes');
+            tb.innerHTML = '';
+
+            const isAdmin = window.currentUser && window.currentUser.rol === 'Admin';
+            
+            // Toggle columna de acciones según rol
+            document.querySelectorAll('.col-acciones-cliente').forEach(el => {
+                if(isAdmin) el.classList.remove('hidden');
+                else el.classList.add('hidden');
+            });
+
+            const filtrados = window.clientes.filter(c => 
+                c.nombre.toLowerCase().includes(search) || 
+                c.region.toLowerCase().includes(search) ||
+                (c.telefono && c.telefono.toLowerCase().includes(search))
+            );
+
+            filtrados.forEach((c) => {
+                // Buscar el índice real en el arreglo global
+                const realIdx = window.clientes.findIndex(item => item.idDoc === c.idDoc);
+                const fComp = new Date(c.ultimaCompra);
+                const dias = Math.floor((hoy - fComp) / (1000 * 60 * 60 * 24));
+                
+                let accionesHtml = '';
+                if(isAdmin) {
+                    accionesHtml = `
+                        <td class="p-2 sm:p-3 col-acciones-cliente">
+                            <div class="flex items-center space-x-2">
+                                <button onclick="editarCliente(${realIdx})" class="p-1 text-slate-300 hover:text-amber-400 transition" title="Editar Cliente">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </button>
+                                <button onclick="eliminarCliente(${realIdx})" class="p-1 text-slate-300 hover:text-red-400 transition" title="Eliminar Cliente">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    `;
+                }
+
+                tb.innerHTML += `
+                    <tr>
+                        <td class="p-2 sm:p-3 font-bold text-amber-400">${c.id || 'N/A'}</td>
+                        <td class="p-2 sm:p-3 font-semibold text-white">${c.nombre}</td>
+                        <td class="p-2 sm:p-3 text-cyan-400"><i class="fa-solid fa-phone text-[10px] mr-1 text-slate-400"></i>${c.telefono || 'Sin registrar'}</td>
+                        <td class="p-2 sm:p-3 text-slate-300">${c.region}</td>
+                        <td class="p-2 sm:p-3 font-bold ${dias>=30?'text-red-400':dias>=15?'text-amber-400':'text-emerald-400'}">${isNaN(dias)?0:dias} días</td>
+                        ${accionesHtml}
+                    </tr>
+                `;
+            });
+        }
+
+        // Abrir modal de creación de cliente
+        function openModalCliente() {
+            document.getElementById('modalClienteTitulo').innerText = 'Registrar Nuevo Cliente';
+            document.getElementById('cliEditIndex').value = '';
+            document.getElementById('cliNombre').value = '';
+            document.getElementById('cliTelefono').value = '';
+            document.getElementById('cliRegion').value = '';
+            document.getElementById('modalCliente').classList.remove('hidden');
+        }
+
+        // Abrir modal para editar cliente
+        function editarCliente(idx) {
+            const c = window.clientes[idx];
+            if (!c) return;
+            document.getElementById('modalClienteTitulo').innerText = 'Editar Cliente';
+            document.getElementById('cliEditIndex').value = idx;
+            document.getElementById('cliNombre').value = c.nombre || '';
+            document.getElementById('cliTelefono').value = c.telefono || '';
+            document.getElementById('cliRegion').value = c.region || '';
+            document.getElementById('modalCliente').classList.remove('hidden');
+        }
+
+        function renderAgentes() {
+            if(!window.currentUser || window.currentUser.rol !== 'Admin') return;
+
+            const container = document.getElementById('cardsAgentes');
+            container.innerHTML = '';
+
+            window.usuarios.forEach((a, idx) => {
+                const tot = window.ventas.filter(v => v.vendedor === a.nombre).reduce((acc, x) => acc + (x.total || 0), 0);
+                container.innerHTML += `
+                    <div class="bg-regio-card p-4 sm:p-5 rounded-xl border border-regio relative">
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="text-xs bg-amber-500/20 text-amber-400 font-bold px-2 py-0.5 rounded">${a.rol}</span>
+                            <div class="space-x-1">
+                                <button onclick="editarAgente(${idx})" class="text-slate-400 hover:text-white text-xs p-1"><i class="fa-solid fa-pen"></i></button>
+                                ${a.user !== 'admin' ? `<button onclick="eliminarAgente(${idx})" class="text-slate-400 hover:text-red-400 text-xs p-1"><i class="fa-solid fa-trash"></i></button>` : ''}
+                            </div>
+                        </div>
+                        <h3 class="text-base sm:text-lg font-bold text-white">${a.nombre}</h3>
+                        <p class="text-xs text-slate-400">Usuario: <b class="text-slate-200">${a.user}</b></p>
+                        
+                        <div class="mt-2 flex items-center justify-between bg-slate-900 px-3 py-1.5 rounded border border-regio text-xs">
+                            <span class="text-slate-400">Contraseña:</span>
+                            <div class="flex items-center space-x-2">
+                                <input type="password" id="pass-${idx}" value="${a.pass}" readonly class="bg-transparent text-amber-400 font-mono w-16 focus:outline-none">
+                                <button onclick="togglePassView(${idx})" class="text-slate-400 hover:text-amber-400"><i class="fa-solid fa-eye" id="eye-${idx}"></i></button>
+                            </div>
+                        </div>
+
+                        <div class="border-t border-regio pt-3 mt-3 flex justify-between items-center text-xs">
+                            <span class="text-slate-400">Ventas Acumuladas</span>
+                            <span class="font-bold text-emerald-400">$${tot.toLocaleString('es-MX')}</span>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function togglePassView(idx) {
+            const inp = document.getElementById('pass-' + idx);
+            const eye = document.getElementById('eye-' + idx);
+            if(inp.type === 'password') {
+                inp.type = 'text';
+                eye.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                inp.type = 'password';
+                eye.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        }
+
+        function openModalAgente() {
+            document.getElementById('modalAgenteTitulo').innerText = 'Crear Nuevo Usuario';
+            document.getElementById('agenteEditId').value = '';
+            document.getElementById('agenteNombre').value = '';
+            document.getElementById('agenteUser').value = '';
+            document.getElementById('agentePass').value = '';
+            document.getElementById('agenteRegion').value = '';
+            document.getElementById('modalAgente').classList.remove('hidden');
+        }
+
+        function editarAgente(idx) {
+            const u = window.usuarios[idx];
+            document.getElementById('modalAgenteTitulo').innerText = 'Editar Usuario';
+            document.getElementById('agenteEditId').value = idx;
+            document.getElementById('agenteNombre').value = u.nombre;
+            document.getElementById('agenteUser').value = u.user;
+            document.getElementById('agentePass').value = u.pass;
+            document.getElementById('agenteRegion').value = u.region;
+            document.getElementById('modalAgente').classList.remove('hidden');
+        }
+
+        function generarReporteMensual() {
+            if(!window.currentUser || window.currentUser.rol !== 'Admin') return;
+
+            const mes = document.getElementById('repMes').value;
+            const anio = document.getElementById('repAnio').value;
+            const vendedor = document.getElementById('repAgente').value;
+
+            document.getElementById('lblPeriodoReporte').innerText = document.getElementById('repMes').options[document.getElementById('repMes').selectedIndex].text + ' ' + anio;
+            document.getElementById('lblVendedorReporte').innerText = vendedor;
+
+            const filtradas = window.ventas.filter(v => {
+                const f = new Date(v.fecha);
+                const mMatch = (f.getMonth() + 1) == mes;
+                const aMatch = f.getFullYear() == anio;
+                const vMatch = (vendedor === 'TODOS' || v.vendedor === vendedor);
+                return mMatch && aMatch && vMatch;
+            });
+
+            const tb = document.getElementById('tablaReporte');
+            tb.innerHTML = '';
+
+            let totM = 0, totL = 0;
+
+            filtradas.forEach(v => {
+                totM += (v.total || 0);
+                totL += (v.litros || 0);
+                tb.innerHTML += `
+                    <tr>
+                        <td class="p-2 border-b border-regio">${v.id}</td>
+                        <td class="p-2 border-b border-regio">${v.fecha}</td>
+                        <td class="p-2 border-b border-regio font-semibold">${v.cliente}</td>
+                        <td class="p-2 border-b border-regio">${(v.litros || 0).toLocaleString()} Lts</td>
+                        <td class="p-2 border-b border-regio font-bold">$${(v.total || 0).toLocaleString('es-MX', {minimumFractionDigits:2})}</td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('repTotalMonto').innerText = '$' + totM.toLocaleString('es-MX', {minimumFractionDigits:2});
+            document.getElementById('repTotalLitros').innerText = totL.toLocaleString() + ' Lts';
+            document.getElementById('repTotalTrans').innerText = filtradas.length;
+        }
+
+        function exportarExcel() {
+            if(!window.currentUser || window.currentUser.rol !== 'Admin') return;
+
+            let csv = 'Folio,Fecha,Cliente,Litros,Total\n';
+            const rows = document.querySelectorAll('#tablaReporte tr');
+            rows.forEach(r => {
+                const cols = r.querySelectorAll('td');
+                if(cols.length) {
+                    const line = Array.from(cols).map(c => `"${c.innerText.replace('$', '').replace(' Lts', '').trim()}"`).join(',');
+                    csv += line + '\n';
+                }
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `Reporte_REGIO_FUEL_${document.getElementById('lblPeriodoReporte').innerText.replace(' ', '_')}.csv`;
+            link.click();
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
