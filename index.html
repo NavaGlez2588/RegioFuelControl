@@ -505,6 +505,7 @@
                 <div>
                     <h2 class="text-xl sm:text-2xl font-bold text-white">Objetivos Semanales</h2>
                     <p class="text-xs text-slate-400">Metas semanales con varios clientes, avance y gráficas</p>
+                    <p class="text-[10px] text-slate-500 mt-1">* Avance: Entregada 100% · En Tránsito 50% · Detenida/Contratiempo 25%</p>
                 </div>
                 <button onclick="openModalObjetivo()" class="admin-only bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm transition">
                     <i class="fa-solid fa-plus mr-1"></i> Nuevo Objetivo Semanal
@@ -1338,13 +1339,23 @@
             const vta = window.ventas[idx];
             if (!vta) return;
 
-            if (window.dataMode === 'firebase' && window.db && vta.idDoc) {
-                await updateDoc(doc(window.db, "ventas", vta.idDoc), { estatus: est });
-            } else {
-                vta.estatus = est;
-                await saveToLocal();
-                renderEntregas();
-                renderDashboard();
+            try {
+                if (window.dataMode === 'firebase' && window.db && vta.idDoc && window.updateDoc && window.doc) {
+                    await window.updateDoc(window.doc(window.db, "ventas", vta.idDoc), { estatus: est });
+                } else {
+                    vta.estatus = est;
+                    if (window.saveToLocal) await window.saveToLocal();
+                    else {
+                        // fallback
+                    }
+                    if (typeof renderEntregas === 'function') renderEntregas();
+                    if (typeof renderDashboard === 'function') renderDashboard();
+                    if (typeof renderObjetivos === 'function') renderObjetivos();
+                    if (typeof renderChartObjetivosDash === 'function') renderChartObjetivosDash();
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Error al cambiar estatus: ' + (e.message || e));
             }
         };
 
@@ -2565,7 +2576,33 @@
             return { ...o, items: o.items || [], notasGenerales: o.notasGenerales || '' };
         }
 
+        // Avance según estatus de entrega:
+        // Entregada = 100%, En Tránsito = 50%, Detenida/Contratiempo = 25%
+        function factorAvanceEstatus(estatus) {
+            const e = (estatus || '').trim();
+            if (e === 'Entregada') return 1;
+            if (e === 'En Tránsito') return 0.5;
+            if (e === 'Detenida' || e === 'Contratiempo') return 0.25;
+            return 0;
+        }
+
         function litrosVendidosItem(obj, item) {
+            // Litros efectivos hacia el objetivo (ponderados por estatus de entrega)
+            const ini = obj.fechaInicio;
+            const fin = obj.fechaFin;
+            return (window.ventas || []).filter(v => {
+                if ((v.cliente || '') !== (item.cliente || '')) return false;
+                if (item.producto && v.producto && v.producto !== item.producto) return false;
+                const f = v.fecha || '';
+                return f >= ini && f <= fin;
+            }).reduce((acc, v) => {
+                const lts = parseFloat(v.litros) || 0;
+                return acc + lts * factorAvanceEstatus(v.estatus);
+            }, 0);
+        }
+
+        function litrosBrutosItem(obj, item) {
+            // Litros reales sin ponderar (referencia)
             const ini = obj.fechaInicio;
             const fin = obj.fechaFin;
             return (window.ventas || []).filter(v => {
@@ -2739,12 +2776,12 @@
                         <td class="p-2 text-center">${item.numero || 1}</td>
                         <td class="p-2">${item.tipoCarga || 'Sencillo'}</td>
                         <td class="p-2 text-amber-400 font-bold">${meta.toLocaleString('es-MX')}</td>
-                        <td class="p-2 font-bold ${auto?'text-emerald-400':'text-cyan-300'}">${vendidos.toLocaleString('es-MX')}</td>
+                        <td class="p-2 font-bold ${auto?'text-emerald-400':'text-cyan-300'}">${Math.round(vendidos).toLocaleString('es-MX')}<div class="text-[9px] text-slate-500">efectivos*</div></td>
                         <td class="p-2">
-                            <div class="w-full bg-slate-800 rounded h-2 mb-1"><div class="h-2 rounded ${pct>=100?'bg-emerald-500':'bg-amber-500'}" style="width:${pct}%"></div></div>
+                            <div class="w-full bg-slate-800 rounded h-2 mb-1"><div class="h-2 rounded ${pct>=100?'bg-emerald-500':pct>=50?'bg-amber-500':'bg-orange-500'}" style="width:${pct}%"></div></div>
                             <span class="text-[9px] text-slate-400">${pct}%</span>
                         </td>
-                        <td class="p-2">${cumpleCtrl}<div class="text-[9px] text-slate-500">${auto?'Meta en ventas ✓':''}</div></td>
+                        <td class="p-2">${cumpleCtrl}<div class="text-[9px] text-slate-500">${auto?'Meta alcanzada ✓':''}</div></td>
                         <td class="p-2 min-w-[120px]">${notaCtrl}</td>
                     </tr>`;
                 }).join('');
