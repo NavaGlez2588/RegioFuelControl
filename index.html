@@ -105,6 +105,9 @@
                     <button onclick="switchTab('clientes')" id="tab-clientes" class="px-3 py-2 rounded-lg text-sm font-semibold transition text-slate-300 hover:text-white hover:bg-slate-800">
                         <i class="fa-solid fa-users mr-1.5"></i> Clientes
                     </button>
+                    <button onclick="switchTab('objetivos')" id="tab-objetivos" class="px-3 py-2 rounded-lg text-sm font-semibold transition text-slate-300 hover:text-white hover:bg-slate-800">
+                        <i class="fa-solid fa-bullseye mr-1.5"></i> Objetivos
+                    </button>
                     <button onclick="switchTab('agentes')" id="tab-agentes" class="admin-only px-3 py-2 rounded-lg text-sm font-semibold transition text-slate-300 hover:text-white hover:bg-slate-800">
                         <i class="fa-solid fa-user-tie mr-1.5"></i> Agentes
                     </button>
@@ -149,6 +152,9 @@
             <button onclick="switchTabMobile('clientes')" class="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 flex items-center">
                 <i class="fa-solid fa-users w-6 text-amber-500"></i> Clientes
             </button>
+            <button onclick="switchTabMobile('objetivos')" class="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 flex items-center">
+                <i class="fa-solid fa-bullseye w-6 text-amber-500"></i> Objetivos Semanales
+            </button>
             <button onclick="switchTabMobile('precios')" class="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 flex items-center">
                 <i class="fa-solid fa-tags w-6 text-amber-500"></i> Precios
             </button>
@@ -179,7 +185,11 @@
                         <i class="fa-solid fa-dollar-sign text-emerald-400"></i>
                     </div>
                     <div id="kpiTotalVentas" class="text-xl sm:text-2xl font-black text-white mt-2">$0.00</div>
-                    <span class="text-xs text-emerald-400 font-semibold"><i class="fa-solid fa-circle-check"></i> Pesos Mexicanos (MXN)</span>
+                    <div class="mt-2 space-y-0.5 text-[10px] sm:text-xs text-slate-400">
+                        <div class="flex justify-between"><span class="text-amber-400/90">Diésel</span><span id="kpiVentaDiesel" class="text-slate-200 font-semibold">$0.00</span></div>
+                        <div class="flex justify-between"><span class="text-cyan-400/90">Gas. Regular</span><span id="kpiVentaRegular" class="text-slate-200 font-semibold">$0.00</span></div>
+                        <div class="flex justify-between"><span class="text-emerald-400/90">Gas. Premium</span><span id="kpiVentaPremium" class="text-slate-200 font-semibold">$0.00</span></div>
+                    </div>
                 </div>
                 <div class="bg-regio-card p-4 sm:p-5 rounded-xl border border-regio shadow-md">
                     <div class="flex justify-between items-center text-slate-400 text-xs sm:text-sm">
@@ -187,7 +197,11 @@
                         <i class="fa-solid fa-droplet text-cyan-400"></i>
                     </div>
                     <div id="kpiTotalLitros" class="text-xl sm:text-2xl font-black text-white mt-2">0 Lts</div>
-                    <span class="text-xs text-cyan-400 font-semibold">Diésel, Regular y Premium</span>
+                    <div class="mt-2 space-y-0.5 text-[10px] sm:text-xs text-slate-400">
+                        <div class="flex justify-between"><span class="text-amber-400/90">Diésel</span><span id="kpiLtsDiesel" class="text-slate-200 font-semibold">0 Lts</span></div>
+                        <div class="flex justify-between"><span class="text-cyan-400/90">Gas. Regular</span><span id="kpiLtsRegular" class="text-slate-200 font-semibold">0 Lts</span></div>
+                        <div class="flex justify-between"><span class="text-emerald-400/90">Gas. Premium</span><span id="kpiLtsPremium" class="text-slate-200 font-semibold">0 Lts</span></div>
+                    </div>
                 </div>
                 <div class="bg-regio-card p-4 sm:p-5 rounded-xl border border-regio shadow-md">
                     <div class="flex justify-between items-center text-slate-400 text-xs sm:text-sm">
@@ -207,32 +221,106 @@
                 </div>
             </div>
 
-            <!-- SECCIÓN DE GRÁFICAS GENERALES Y POR AGENTE -->
+            <!-- SECCIÓN DE GRÁFICAS -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Gráfica 1: Venta General por Producto (Dinero $ vs Litros) -->
+                <!-- Gráfica 1: Ventas por producto -->
                 <div class="bg-regio-card p-4 sm:p-5 rounded-xl border border-regio shadow-lg">
-                    <div class="flex justify-between items-center mb-4">
+                    <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
                         <h3 class="text-base sm:text-lg font-bold text-white flex items-center">
-                            <i class="fa-solid fa-chart-column text-amber-500 mr-2"></i> Venta Total de Combustible
+                            <i class="fa-solid fa-chart-column text-amber-500 mr-2"></i> Ventas totales por combustible
                         </h3>
-                        <span class="text-[10px] bg-slate-900 text-slate-400 px-2 py-1 rounded border border-regio">$ MXN vs Litros</span>
+                        <button type="button" onclick="exportarGraficaPDF('chartVentaGeneral', 'Ventas totales por combustible')" class="text-xs bg-red-600 hover:bg-red-700 text-white font-bold px-2.5 py-1 rounded">
+                            <i class="fa-solid fa-file-pdf mr-1"></i> PDF
+                        </button>
+                    </div>
+                    <div class="flex flex-wrap gap-2 mb-3 items-end">
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-0.5">Comparar por</label>
+                            <select id="filtroCombTipo" onchange="actualizarFiltrosGraficaComb()" class="bg-slate-900 border border-regio rounded px-2 py-1.5 text-xs text-white">
+                                <option value="mes">Mes</option>
+                                <option value="anio">Año</option>
+                                <option value="todo">Todo el historial</option>
+                            </select>
+                        </div>
+                        <div id="filtroCombMesWrap">
+                            <label class="block text-[10px] text-slate-400 mb-0.5">Mes</label>
+                            <select id="filtroCombMes" onchange="renderChartsFromDashboard()" class="bg-slate-900 border border-regio rounded px-2 py-1.5 text-xs text-white">
+                                <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+                                <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+                                <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+                                <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+                            </select>
+                        </div>
+                        <div id="filtroCombAnioWrap">
+                            <label class="block text-[10px] text-slate-400 mb-0.5">Año</label>
+                            <select id="filtroCombAnio" onchange="renderChartsFromDashboard()" class="bg-slate-900 border border-regio rounded px-2 py-1.5 text-xs text-white"></select>
+                        </div>
                     </div>
                     <div class="relative h-64 sm:h-72 w-full">
                         <canvas id="chartVentaGeneral"></canvas>
                     </div>
                 </div>
 
-                <!-- Gráfica 2: Ventas por Agente de Ventas ($ vs Litros) -->
+                <!-- Gráfica 2: Ventas por agente -->
                 <div class="bg-regio-card p-4 sm:p-5 rounded-xl border border-regio shadow-lg">
-                    <div class="flex justify-between items-center mb-4">
+                    <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
                         <h3 class="text-base sm:text-lg font-bold text-white flex items-center">
-                            <i class="fa-solid fa-user-tie text-cyan-400 mr-2"></i> Ventas por Agente de Ventas
+                            <i class="fa-solid fa-user-tie text-cyan-400 mr-2"></i> Ventas acumuladas por agente
                         </h3>
-                        <span class="text-[10px] bg-slate-900 text-slate-400 px-2 py-1 rounded border border-regio">Comparativo Agentes</span>
+                        <button type="button" onclick="exportarGraficaPDF('chartVentasAgentes', 'Ventas acumuladas por agente')" class="text-xs bg-red-600 hover:bg-red-700 text-white font-bold px-2.5 py-1 rounded">
+                            <i class="fa-solid fa-file-pdf mr-1"></i> PDF
+                        </button>
+                    </div>
+                    <div class="flex flex-wrap gap-2 mb-3 items-end">
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-0.5">Comparar por</label>
+                            <select id="filtroAgTipo" onchange="actualizarFiltrosGraficaAg()" class="bg-slate-900 border border-regio rounded px-2 py-1.5 text-xs text-white">
+                                <option value="mes">Mes</option>
+                                <option value="anio">Año</option>
+                                <option value="todo">Todo el historial</option>
+                            </select>
+                        </div>
+                        <div id="filtroAgMesWrap">
+                            <label class="block text-[10px] text-slate-400 mb-0.5">Mes</label>
+                            <select id="filtroAgMes" onchange="renderChartsFromDashboard()" class="bg-slate-900 border border-regio rounded px-2 py-1.5 text-xs text-white">
+                                <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+                                <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+                                <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+                                <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+                            </select>
+                        </div>
+                        <div id="filtroAgAnioWrap">
+                            <label class="block text-[10px] text-slate-400 mb-0.5">Año</label>
+                            <select id="filtroAgAnio" onchange="renderChartsFromDashboard()" class="bg-slate-900 border border-regio rounded px-2 py-1.5 text-xs text-white"></select>
+                        </div>
                     </div>
                     <div class="relative h-64 sm:h-72 w-full">
                         <canvas id="chartVentasAgentes"></canvas>
                     </div>
+                </div>
+            </div>
+
+            <!-- Gráfica 3: Objetivos semanales comparativos -->
+            <div class="bg-regio-card p-4 sm:p-5 rounded-xl border border-regio shadow-lg">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                    <div>
+                        <h3 class="text-base sm:text-lg font-bold text-white flex items-center">
+                            <i class="fa-solid fa-bullseye text-emerald-400 mr-2"></i> Objetivos semanales — comparación
+                        </h3>
+                        <p class="text-[10px] text-slate-400 mt-0.5">Selecciona uno o más objetivos para comparar el % de cumplimiento</p>
+                    </div>
+                    <button type="button" onclick="exportarGraficaPDF('chartObjetivosDash', 'Comparacion de objetivos semanales')" class="text-xs bg-red-600 hover:bg-red-700 text-white font-bold px-2.5 py-1 rounded self-start sm:self-auto">
+                        <i class="fa-solid fa-file-pdf mr-1"></i> PDF
+                    </button>
+                </div>
+                <div class="mb-3">
+                    <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Seleccionar objetivos (Ctrl/Cmd para varios)</label>
+                    <select id="dashObjSelect" multiple size="4" onchange="renderChartObjetivosDash()"
+                        class="w-full bg-slate-900 border border-regio rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500">
+                    </select>
+                </div>
+                <div class="relative h-64 sm:h-80 w-full">
+                    <canvas id="chartObjetivosDash"></canvas>
                 </div>
             </div>
 
@@ -411,7 +499,21 @@
             </div>
         </section>
 
-        <!-- 7. REPORTES -->
+        <!-- 7. OBJETIVOS SEMANALES -->
+        <section id="sec-objetivos" class="hidden space-y-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <div>
+                    <h2 class="text-xl sm:text-2xl font-bold text-white">Objetivos Semanales</h2>
+                    <p class="text-xs text-slate-400">Metas semanales con varios clientes, avance y gráficas</p>
+                </div>
+                <button onclick="openModalObjetivo()" class="admin-only bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm transition">
+                    <i class="fa-solid fa-plus mr-1"></i> Nuevo Objetivo Semanal
+                </button>
+            </div>
+            <div id="listaObjetivosCards" class="space-y-6"></div>
+        </section>
+
+        <!-- 8. REPORTES -->
         <section id="sec-reportes" class="admin-only hidden space-y-6">
             <div class="flex flex-col md:flex-row justify-between md:items-center gap-4 border-b border-regio pb-4">
                 <div>
@@ -685,6 +787,46 @@
     </div>
 
 
+    <!-- MODAL OBJETIVO SEMANAL (varios clientes) -->
+    <div id="modalObjetivo" class="fixed inset-0 bg-black/70 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-regio-card border border-regio rounded-xl p-5 sm:p-6 max-w-2xl w-full max-h-[92vh] overflow-y-auto">
+            <h3 id="modalObjetivoTitulo" class="text-lg sm:text-xl font-bold text-white mb-4">Nuevo Objetivo Semanal</h3>
+            <form onsubmit="event.preventDefault(); guardarObjetivo();" class="space-y-4">
+                <input type="hidden" id="objEditIndex" value="">
+                <div class="grid grid-cols-2 gap-2 sm:gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Fecha inicio</label>
+                        <input type="date" id="objFechaInicio" required class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Fecha fin</label>
+                        <input type="date" id="objFechaFin" required class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Notas generales del objetivo (opcional)</label>
+                    <textarea id="objNotasGenerales" rows="2" class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm" placeholder="Comentarios de la semana..."></textarea>
+                </div>
+
+                <div class="border border-regio rounded-lg p-3 bg-slate-900/50">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="text-xs font-bold text-amber-400"><i class="fa-solid fa-users mr-1"></i> Clientes del objetivo</label>
+                        <button type="button" onclick="agregarFilaClienteObj()" class="text-xs bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 px-2 py-1 rounded">
+                            <i class="fa-solid fa-plus mr-1"></i> Agregar cliente
+                        </button>
+                    </div>
+                    <div id="objClientesFilas" class="space-y-3"></div>
+                    <p class="text-[10px] text-slate-500 mt-2">Puedes agregar varios clientes. Cada uno con su combustible, cargas Full/Sencillo y estatus.</p>
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-2 border-t border-regio">
+                    <button type="button" onclick="closeModal('modalObjetivo')" class="px-3 py-1.5 bg-slate-700 text-white rounded text-xs">Cancelar</button>
+                    <button type="submit" class="px-3 py-1.5 bg-amber-500 text-slate-950 font-bold rounded text-xs">Guardar objetivo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- MODAL CONFIGURACIÓN DE MODO (Local / Firebase) -->
     <div id="modalConfigModo" class="fixed inset-0 bg-black/70 hidden z-50 flex items-center justify-center p-4">
         <div class="bg-regio-card border border-regio rounded-xl p-5 sm:p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
@@ -777,6 +919,7 @@
         window.usuarios = [];
         window.clientes = [];
         window.ventas = [];
+        window.objetivos = [];
         window.currentUser = null;
         window.dataMode = 'local'; // 'local' | 'firebase'
         window.firebaseConfig = null;
@@ -810,6 +953,7 @@
                 ],
                 clientes: [],
                 ventas: [],
+                objetivos: [],
                 modo: 'local',
                 firebaseConfig: null
             };
@@ -821,6 +965,7 @@
                 usuarios: window.usuarios,
                 clientes: window.clientes,
                 ventas: window.ventas,
+                objetivos: window.objetivos,
                 modo: window.dataMode,
                 firebaseConfig: window.firebaseConfig
             };
@@ -893,6 +1038,17 @@
                     if (typeof renderVentas === 'function') renderVentas();
                     if (typeof renderEntregas === 'function') renderEntregas();
                     if (typeof generarReporteMensual === 'function') generarReporteMensual();
+                    if (typeof renderObjetivos === 'function') renderObjetivos();
+                }
+            });
+
+            // Objetivos semanales
+            onSnapshot(collection(window.db, "objetivos"), (snapshot) => {
+                window.objetivos = snapshot.docs.map(d => ({ idDoc: d.id, ...d.data() }));
+                if (window.currentUser) {
+                    if (typeof renderObjetivos === 'function') renderObjetivos();
+                    if (typeof poblarSelectObjetivosDash === 'function') poblarSelectObjetivosDash();
+                    if (typeof renderChartObjetivosDash === 'function') renderChartObjetivosDash();
                 }
             });
         }
@@ -956,6 +1112,7 @@
             window.usuarios = data.usuarios || [];
             window.clientes = data.clientes || [];
             window.ventas = data.ventas || [];
+            window.objetivos = data.objetivos || [];
             window.dataMode = data.modo || 'local';
             window.firebaseConfig = data.firebaseConfig || null;
 
@@ -1373,6 +1530,7 @@
                     usuarios: window.usuarios,
                     clientes: window.clientes,
                     ventas: window.ventas,
+                    objetivos: window.objetivos,
                     modo: window.dataMode
                 };
                 const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -1391,6 +1549,7 @@
                     window.usuarios = res.data.usuarios || [];
                     window.clientes = res.data.clientes || [];
                     window.ventas = res.data.ventas || [];
+                    window.objetivos = res.data.objetivos || [];
                     alert('Respaldo importado. Recarga la aplicación para ver los cambios.');
                     location.reload();
                 }
@@ -1404,6 +1563,7 @@
         // Instancias de Gráficas Chart.js
         let chartVentaGeneralInstance = null;
         let chartVentasAgentesInstance = null;
+        let chartObjetivosDashInstance = null;
 
         function toggleMobileMenu() {
             document.getElementById('mobileMenu').classList.toggle('hidden');
@@ -1435,7 +1595,7 @@
             document.getElementById('modalSelfPass').classList.remove('hidden');
         }
 
-        function switchTab(tab) {
+                function switchTab(tab) {
             if((tab === 'reportes' || tab === 'agentes') && window.currentUser.rol !== 'Admin') {
                 return;
             }
@@ -1454,6 +1614,7 @@
             if(tab === 'ventas') renderVentas();
             if(tab === 'entregas') renderEntregas();
             if(tab === 'clientes') renderClientes();
+            if(tab === 'objetivos') renderObjetivos();
             if(tab === 'agentes') renderAgentes();
             if(tab === 'reportes') generarReporteMensual();
         }
@@ -1502,8 +1663,26 @@
             const totLts = vtasPropias.reduce((acc, v) => acc + (v.litros || 0), 0);
             const pendientes = vtasPropias.filter(v => v.estatus === 'En Tránsito' || v.estatus === 'Detenida').length;
 
+            let dDinero = 0, rDinero = 0, pDinero = 0;
+            let dLts = 0, rLts = 0, pLts = 0;
+            vtasPropias.forEach(v => {
+                const t = v.total || 0, l = v.litros || 0;
+                if (v.producto === 'Diésel') { dDinero += t; dLts += l; }
+                else if (v.producto === 'Gasolina Premium') { pDinero += t; pLts += l; }
+                else if (v.producto === 'Gasolina Regular' || v.producto === 'Gasolina') { rDinero += t; rLts += l; }
+            });
+
             document.getElementById('kpiTotalVentas').innerText = '$' + totVtas.toLocaleString('es-MX', {minimumFractionDigits: 2});
             document.getElementById('kpiTotalLitros').innerText = totLts.toLocaleString() + ' Lts';
+            const fmt$ = (n) => '$' + n.toLocaleString('es-MX', {minimumFractionDigits: 2});
+            const fmtL = (n) => n.toLocaleString('es-MX') + ' Lts';
+            const el = (id) => document.getElementById(id);
+            if (el('kpiVentaDiesel')) el('kpiVentaDiesel').innerText = fmt$(dDinero);
+            if (el('kpiVentaRegular')) el('kpiVentaRegular').innerText = fmt$(rDinero);
+            if (el('kpiVentaPremium')) el('kpiVentaPremium').innerText = fmt$(pDinero);
+            if (el('kpiLtsDiesel')) el('kpiLtsDiesel').innerText = fmtL(dLts);
+            if (el('kpiLtsRegular')) el('kpiLtsRegular').innerText = fmtL(rLts);
+            if (el('kpiLtsPremium')) el('kpiLtsPremium').innerText = fmtL(pLts);
             document.getElementById('kpiTotalClientes').innerText = window.clientes.length;
             document.getElementById('kpiEntregasPendientes').innerText = pendientes;
 
@@ -1533,51 +1712,269 @@
 
             // Renderizar Gráficas
             renderCharts(vtasPropias);
+            poblarSelectObjetivosDash();
+            renderChartObjetivosDash();
         }
 
         // Renderizado de Gráficas Chart.js
+        function nombreMultilinea(nombre) {
+            const parts = String(nombre || '').trim().split(/\s+/).filter(Boolean);
+            if (parts.length <= 1) return nombre || '-';
+            if (parts.length === 2) return [parts[0], parts[1]];
+            // 3+ palabras: primera línea nombre(s), segunda apellidos o resto
+            const mid = Math.ceil(parts.length / 2);
+            return [parts.slice(0, mid).join(' '), parts.slice(mid).join(' ')];
+        }
+
+        function aniosDisponiblesVentas() {
+            const years = new Set();
+            (window.ventas || []).forEach(v => {
+                const y = parseInt(String(v.fecha || '').slice(0, 4), 10);
+                if (y) years.add(y);
+            });
+            const now = new Date().getFullYear();
+            years.add(now);
+            return Array.from(years).sort((a, b) => b - a);
+        }
+
+        function poblarSelectsAnioGraficas() {
+            const years = aniosDisponiblesVentas();
+            ['filtroCombAnio', 'filtroAgAnio'].forEach(id => {
+                const sel = document.getElementById(id);
+                if (!sel) return;
+                const prev = sel.value;
+                sel.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
+                if (prev && years.includes(parseInt(prev, 10))) sel.value = prev;
+                else sel.value = String(new Date().getFullYear());
+            });
+            const mes = String(new Date().getMonth() + 1);
+            const m1 = document.getElementById('filtroCombMes');
+            const m2 = document.getElementById('filtroAgMes');
+            if (m1 && !m1.dataset.init) { m1.value = mes; m1.dataset.init = '1'; }
+            if (m2 && !m2.dataset.init) { m2.value = mes; m2.dataset.init = '1'; }
+        }
+
+        function actualizarFiltrosGraficaComb() {
+            const tipo = document.getElementById('filtroCombTipo')?.value || 'mes';
+            const mesW = document.getElementById('filtroCombMesWrap');
+            const anioW = document.getElementById('filtroCombAnioWrap');
+            if (mesW) mesW.classList.toggle('hidden', tipo !== 'mes');
+            if (anioW) anioW.classList.toggle('hidden', tipo === 'todo');
+            renderChartsFromDashboard();
+        }
+
+        function actualizarFiltrosGraficaAg() {
+            const tipo = document.getElementById('filtroAgTipo')?.value || 'mes';
+            const mesW = document.getElementById('filtroAgMesWrap');
+            const anioW = document.getElementById('filtroAgAnioWrap');
+            if (mesW) mesW.classList.toggle('hidden', tipo !== 'mes');
+            if (anioW) anioW.classList.toggle('hidden', tipo === 'todo');
+            renderChartsFromDashboard();
+        }
+
+        function filtrarVentasPorPeriodo(vtas, tipo, mes, anio) {
+            if (tipo === 'todo') return vtas;
+            return vtas.filter(v => {
+                const f = String(v.fecha || '');
+                if (f.length < 7) return false;
+                const y = parseInt(f.slice(0, 4), 10);
+                const m = parseInt(f.slice(5, 7), 10);
+                if (tipo === 'anio') return y === parseInt(anio, 10);
+                if (tipo === 'mes') return y === parseInt(anio, 10) && m === parseInt(mes, 10);
+                return true;
+            });
+        }
+
+        function renderChartsFromDashboard() {
+            if (!window.currentUser) return;
+            const vtasPropias = window.ventas.filter(v => window.currentUser.rol === 'Admin' || v.vendedor === window.currentUser.nombre);
+            renderCharts(vtasPropias);
+        }
+
         function renderCharts(vtasPropias) {
-            // --- GRÁFICA 1: Ventas por Producto ($ vs Lts) ---
+            poblarSelectsAnioGraficas();
+
+            const tipoC = document.getElementById('filtroCombTipo')?.value || 'mes';
+            const mesC = document.getElementById('filtroCombMes')?.value || String(new Date().getMonth() + 1);
+            const anioC = document.getElementById('filtroCombAnio')?.value || String(new Date().getFullYear());
+            const vtasComb = filtrarVentasPorPeriodo(vtasPropias, tipoC, mesC, anioC);
+
             let dieselLitros = 0, dieselDinero = 0;
             let gasolinaLitros = 0, gasolinaDinero = 0;
             let premiumLitros = 0, premiumDinero = 0;
 
-            vtasPropias.forEach(v => {
-                if(v.producto === 'Diésel') {
+            vtasComb.forEach(v => {
+                if (v.producto === 'Diésel') {
                     dieselLitros += v.litros || 0;
                     dieselDinero += v.total || 0;
-                } else if(v.producto === 'Gasolina Premium') {
+                } else if (v.producto === 'Gasolina Premium') {
                     premiumLitros += v.litros || 0;
                     premiumDinero += v.total || 0;
-                } else if(v.producto === 'Gasolina Regular' || v.producto === 'Gasolina') {
+                } else if (v.producto === 'Gasolina Regular' || v.producto === 'Gasolina') {
                     gasolinaLitros += v.litros || 0;
                     gasolinaDinero += v.total || 0;
                 }
             });
 
             const ctxGeneral = document.getElementById('chartVentaGeneral')?.getContext('2d');
-            if(ctxGeneral) {
-                if(chartVentaGeneralInstance) chartVentaGeneralInstance.destroy();
+            if (ctxGeneral) {
+                if (chartVentaGeneralInstance) chartVentaGeneralInstance.destroy();
+
+                const litrosArr = [dieselLitros, gasolinaLitros, premiumLitros];
+                const dineroArr = [dieselDinero, gasolinaDinero, premiumDinero];
+                const totLitrosComb = dieselLitros + gasolinaLitros + premiumLitros;
+                const totDineroComb = dieselDinero + gasolinaDinero + premiumDinero;
+                const pctLtsArr = litrosArr.map(v => totLitrosComb > 0 ? Math.round(v / totLitrosComb * 100) : 0);
+                const pctDinArr = dineroArr.map(v => totDineroComb > 0 ? Math.round(v / totDineroComb * 100) : 0);
 
                 chartVentaGeneralInstance = new Chart(ctxGeneral, {
                     type: 'bar',
                     data: {
-                        labels: ['Diésel', 'Gasolina Regular', 'Gasolina Premium'],
+                        labels: ['Diésel', ['Gasolina', 'Regular'], ['Gasolina', 'Premium']],
                         datasets: [
                             {
-                                label: 'Litros Vendidos (Lts)',
-                                data: [dieselLitros, gasolinaLitros, premiumLitros],
-                                backgroundColor: 'rgba(6, 182, 212, 0.75)', // cyan
-                                borderColor: '#06b6d4',
-                                borderWidth: 1,
+                                label: 'Litros vendidos (Lts)',
+                                data: litrosArr,
+                                backgroundColor: [
+                                    'rgba(245, 158, 11, 0.85)',
+                                    'rgba(6, 182, 212, 0.85)',
+                                    'rgba(16, 185, 129, 0.85)'
+                                ],
+                                borderWidth: 0,
+                                borderRadius: 4,
+                                barPercentage: 0.45,
+                                categoryPercentage: 0.55,
+                                yAxisID: 'yLitros',
+                                order: 2
+                            },
+                            {
+                                label: 'Monto ($ MXN)',
+                                data: dineroArr,
+                                backgroundColor: [
+                                    'rgba(245, 158, 11, 0.35)',
+                                    'rgba(6, 182, 212, 0.35)',
+                                    'rgba(16, 185, 129, 0.35)'
+                                ],
+                                borderWidth: 0,
+                                borderRadius: 4,
+                                barPercentage: 0.45,
+                                categoryPercentage: 0.55,
+                                yAxisID: 'yDinero',
+                                order: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { labels: { color: '#cbd5e1', font: { size: 11 } } },
+                            tooltip: {
+                                callbacks: {
+                                    title: function(items) {
+                                        const lab = items[0] && items[0].label;
+                                        return Array.isArray(lab) ? lab.join(' ') : (lab || '');
+                                    },
+                                    label: function(context) {
+                                        const i = context.dataIndex;
+                                        const v = context.parsed.y || 0;
+                                        if (context.dataset.yAxisID === 'yDinero') {
+                                            return 'Monto: $' + v.toLocaleString('es-MX', { minimumFractionDigits: 2 }) + ' (' + pctDinArr[i] + '%)';
+                                        }
+                                        return 'Litros: ' + v.toLocaleString('es-MX') + ' Lts (' + pctLtsArr[i] + '%)';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                ticks: {
+                                    color: '#e2e8f0',
+                                    font: { size: 11, weight: 'bold' },
+                                    autoSkip: false,
+                                    maxRotation: 0,
+                                    minRotation: 0
+                                },
+                                grid: { color: '#1e3a5f', display: false }
+                            },
+                            yLitros: {
+                                type: 'linear',
+                                position: 'left',
+                                title: { display: true, text: 'Litros (Lts)', color: '#06b6d4' },
+                                ticks: {
+                                    color: '#06b6d4',
+                                    callback: function(v) { return v.toLocaleString('es-MX'); }
+                                },
+                                grid: { color: '#1e3a5f' },
+                                beginAtZero: true
+                            },
+                            yDinero: {
+                                type: 'linear',
+                                position: 'right',
+                                title: { display: true, text: 'Dinero ($ MXN)', color: '#f59e0b' },
+                                ticks: {
+                                    color: '#f59e0b',
+                                    callback: function(v) { return '$' + v.toLocaleString('es-MX'); }
+                                },
+                                grid: { drawOnChartArea: false },
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }
+
+            // --- GRÁFICA 2: Ventas por Agente ---
+            const tipoA = document.getElementById('filtroAgTipo')?.value || 'mes';
+            const mesA = document.getElementById('filtroAgMes')?.value || String(new Date().getMonth() + 1);
+            const anioA = document.getElementById('filtroAgAnio')?.value || String(new Date().getFullYear());
+            const vtasAg = filtrarVentasPorPeriodo(vtasPropias, tipoA, mesA, anioA);
+
+            const agentesMap = {};
+            window.usuarios.filter(u => u.rol === 'Agente').forEach(a => {
+                agentesMap[a.nombre] = { litros: 0, dinero: 0 };
+            });
+            vtasAg.forEach(v => {
+                const nombreAgente = v.vendedor || 'Sin agente';
+                if (!agentesMap[nombreAgente]) {
+                    agentesMap[nombreAgente] = { litros: 0, dinero: 0 };
+                }
+                agentesMap[nombreAgente].litros += v.litros || 0;
+                agentesMap[nombreAgente].dinero += v.total || 0;
+            });
+
+            const labelsAgentes = Object.keys(agentesMap);
+            const labelsAgentesMulti = labelsAgentes.map(nombreMultilinea);
+            const litrosAgentes = labelsAgentes.map(k => agentesMap[k].litros);
+            const dineroAgentes = labelsAgentes.map(k => agentesMap[k].dinero);
+
+            const ctxAgentes = document.getElementById('chartVentasAgentes')?.getContext('2d');
+            if (ctxAgentes) {
+                if (chartVentasAgentesInstance) chartVentasAgentesInstance.destroy();
+
+                chartVentasAgentesInstance = new Chart(ctxAgentes, {
+                    type: 'bar',
+                    data: {
+                        labels: labelsAgentesMulti.length ? labelsAgentesMulti : [['Sin', 'datos']],
+                        datasets: [
+                            {
+                                label: 'Litros (Lts)',
+                                data: litrosAgentes.length ? litrosAgentes : [0],
+                                backgroundColor: 'rgba(6, 182, 212, 0.8)',
+                                borderWidth: 0,
+                                borderRadius: 4,
+                                barPercentage: 0.45,
+                                categoryPercentage: 0.55,
                                 yAxisID: 'yLitros'
                             },
                             {
-                                label: 'Monto Total ($ MXN)',
-                                data: [dieselDinero, gasolinaDinero, premiumDinero],
-                                backgroundColor: 'rgba(245, 158, 11, 0.75)', // amber
-                                borderColor: '#f59e0b',
-                                borderWidth: 1,
+                                label: 'Monto ($ MXN)',
+                                data: dineroAgentes.length ? dineroAgentes : [0],
+                                backgroundColor: 'rgba(245, 158, 11, 0.35)',
+                                borderWidth: 0,
+                                borderRadius: 4,
+                                barPercentage: 0.45,
+                                categoryPercentage: 0.55,
                                 yAxisID: 'yDinero'
                             }
                         ]
@@ -1589,130 +1986,188 @@
                             legend: { labels: { color: '#cbd5e1', font: { size: 11 } } },
                             tooltip: {
                                 callbacks: {
+                                    title: function(items) {
+                                        const lab = items[0] && items[0].label;
+                                        return Array.isArray(lab) ? lab.join(' ') : (lab || '');
+                                    },
                                     label: function(context) {
-                                        let label = context.dataset.label || '';
-                                        if (label) label += ': ';
-                                        if (context.datasetIndex === 1) {
-                                            label += '$' + context.parsed.y.toLocaleString('es-MX', {minimumFractionDigits:2});
-                                        } else {
-                                            label += context.parsed.y.toLocaleString() + ' Lts';
+                                        const v = context.parsed.y || 0;
+                                        if (context.dataset.yAxisID === 'yDinero') {
+                                            return 'Monto: $' + v.toLocaleString('es-MX', { minimumFractionDigits: 2 });
                                         }
-                                        return label;
+                                        return 'Litros: ' + v.toLocaleString('es-MX') + ' Lts';
                                     }
                                 }
                             }
                         },
                         scales: {
-                            x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e3a5f' } },
+                            x: {
+                                ticks: {
+                                    color: '#e2e8f0',
+                                    font: { size: 11, weight: 'bold' },
+                                    autoSkip: false,
+                                    maxRotation: 0,
+                                    minRotation: 0
+                                },
+                                grid: { display: false }
+                            },
                             yLitros: {
                                 type: 'linear',
                                 position: 'left',
                                 title: { display: true, text: 'Litros (Lts)', color: '#06b6d4' },
-                                ticks: { color: '#06b6d4' },
-                                grid: { color: '#1e3a5f' }
+                                ticks: {
+                                    color: '#06b6d4',
+                                    callback: function(v) { return v.toLocaleString('es-MX'); }
+                                },
+                                grid: { color: '#1e3a5f' },
+                                beginAtZero: true
                             },
                             yDinero: {
                                 type: 'linear',
                                 position: 'right',
                                 title: { display: true, text: 'Dinero ($ MXN)', color: '#f59e0b' },
-                                ticks: { color: '#f59e0b' },
-                                grid: { drawOnChartArea: false }
-                            }
-                        }
-                    }
-                });
-            }
-
-            // --- GRÁFICA 2: Ventas por Agente ($ vs Lts) ---
-            const agentesMap = {};
-            
-            // Inicializar mapa con usuarios agentes
-            window.usuarios.filter(u => u.rol === 'Agente').forEach(a => {
-                agentesMap[a.nombre] = { litros: 0, dinero: 0 };
-            });
-
-            // Agrupar ventas
-            vtasPropias.forEach(v => {
-                const nombreAgente = v.vendedor || 'Desconocido';
-                if(!agentesMap[nombreAgente]) {
-                    agentesMap[nombreAgente] = { litros: 0, dinero: 0 };
-                }
-                agentesMap[nombreAgente].litros += v.litros || 0;
-                agentesMap[nombreAgente].dinero += v.total || 0;
-            });
-
-            const labelsAgentes = Object.keys(agentesMap);
-            const litrosAgentes = labelsAgentes.map(k => agentesMap[k].litros);
-            const dineroAgentes = labelsAgentes.map(k => agentesMap[k].dinero);
-
-            const ctxAgentes = document.getElementById('chartVentasAgentes')?.getContext('2d');
-            if(ctxAgentes) {
-                if(chartVentasAgentesInstance) chartVentasAgentesInstance.destroy();
-
-                chartVentasAgentesInstance = new Chart(ctxAgentes, {
-                    type: 'bar',
-                    data: {
-                        labels: labelsAgentes.length ? labelsAgentes : ['Sin Agentes'],
-                        datasets: [
-                            {
-                                label: 'Litros (Lts)',
-                                data: litrosAgentes.length ? litrosAgentes : [0],
-                                backgroundColor: 'rgba(16, 185, 129, 0.75)', // emerald
-                                borderColor: '#10b981',
-                                borderWidth: 1,
-                                yAxisID: 'y1'
-                            },
-                            {
-                                label: 'Total ($ MXN)',
-                                data: dineroAgentes.length ? dineroAgentes : [0],
-                                backgroundColor: 'rgba(59, 130, 246, 0.75)', // blue
-                                borderColor: '#3b82f6',
-                                borderWidth: 1,
-                                yAxisID: 'y2'
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { labels: { color: '#cbd5e1', font: { size: 11 } } },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        let label = context.dataset.label || '';
-                                        if (label) label += ': ';
-                                        if (context.datasetIndex === 1) {
-                                            label += '$' + context.parsed.y.toLocaleString('es-MX', {minimumFractionDigits:2});
-                                        } else {
-                                            label += context.parsed.y.toLocaleString() + ' Lts';
-                                        }
-                                        return label;
-                                    }
-                                }
-                            }
-                        },
-                        scales: {
-                            x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e3a5f' } },
-                            y1: {
-                                type: 'linear',
-                                position: 'left',
-                                title: { display: true, text: 'Litros', color: '#10b981' },
-                                ticks: { color: '#10b981' },
-                                grid: { color: '#1e3a5f' }
-                            },
-                            y2: {
-                                type: 'linear',
-                                position: 'right',
-                                title: { display: true, text: 'Dinero ($)', color: '#3b82f6' },
-                                ticks: { color: '#3b82f6' },
-                                grid: { drawOnChartArea: false }
+                                ticks: {
+                                    color: '#f59e0b',
+                                    callback: function(v) { return '$' + v.toLocaleString('es-MX'); }
+                                },
+                                grid: { drawOnChartArea: false },
+                                beginAtZero: true
                             }
                         }
                     }
                 });
             }
         }
+
+        function exportarGraficaPDF(canvasId, titulo) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) {
+                alert('No se encontró la gráfica.');
+                return;
+            }
+            const img = canvas.toDataURL('image/png');
+            const w = window.open('', '_blank');
+            w.document.write(`<!DOCTYPE html><html><head><title>${titulo}</title>
+                <style>
+                    body{font-family:Arial,sans-serif;padding:20px;color:#111;text-align:center}
+                    h1{font-size:18px;margin-bottom:4px}
+                    p{font-size:12px;color:#666;margin-bottom:16px}
+                    img{max-width:100%;height:auto;border:1px solid #ddd}
+                    @media print{button{display:none}}
+                </style></head><body>
+                <button onclick="window.print()" style="padding:8px 16px;margin-bottom:12px;background:#dc2626;color:#fff;border:none;border-radius:4px;font-weight:bold;cursor:pointer">Imprimir / Guardar PDF</button>
+                <h1>REGIO FUEL</h1>
+                <p>${titulo}<br>Generado: ${new Date().toLocaleString('es-MX')}</p>
+                <img src="${img}" alt="${titulo}"/>
+                <script>setTimeout(function(){ window.print(); }, 500);<\/script>
+                </body></html>`);
+            w.document.close();
+        }
+
+        function labelObjetivo(o) {
+            return (o.fechaInicio || '?') + ' → ' + (o.fechaFin || '?');
+        }
+
+        function pctCumplimientoObjetivo(raw) {
+            const o = (typeof normalizarObjetivo === 'function') ? normalizarObjetivo(raw) : raw;
+            let meta = 0, vend = 0;
+            (o.items || []).forEach(item => {
+                const m = item.litrosObjetivo || ((item.numero || 1) * (item.tipoCarga === 'Full' ? 60000 : 30000));
+                meta += m;
+                if (typeof litrosVendidosItem === 'function') vend += litrosVendidosItem(o, item);
+                else {
+                    // fallback
+                    const ini = o.fechaInicio, fin = o.fechaFin;
+                    vend += (window.ventas || []).filter(v =>
+                        v.cliente === item.cliente && (!item.producto || v.producto === item.producto) &&
+                        (v.fecha || '') >= ini && (v.fecha || '') <= fin
+                    ).reduce((a, v) => a + (v.litros || 0), 0);
+                }
+            });
+            // legacy single-client
+            if (!(o.items || []).length && o.cliente) {
+                const m = o.litrosObjetivo || ((o.numero || 1) * (o.tipoCarga === 'Full' ? 60000 : 30000));
+                meta = m;
+                const ini = o.fechaInicio, fin = o.fechaFin;
+                vend = (window.ventas || []).filter(v =>
+                    v.cliente === o.cliente && (v.fecha || '') >= ini && (v.fecha || '') <= fin
+                ).reduce((a, v) => a + (v.litros || 0), 0);
+            }
+            return meta > 0 ? Math.min(100, Math.round(vend / meta * 100)) : 0;
+        }
+
+        function poblarSelectObjetivosDash() {
+            const sel = document.getElementById('dashObjSelect');
+            if (!sel) return;
+            const prev = Array.from(sel.selectedOptions).map(o => o.value);
+            sel.innerHTML = '';
+            const lista = (window.objetivos || []).slice().sort((a, b) => (b.fechaInicio || '').localeCompare(a.fechaInicio || ''));
+            if (!lista.length) {
+                sel.innerHTML = '<option disabled>No hay objetivos registrados</option>';
+                return;
+            }
+            lista.forEach((o, i) => {
+                const key = o.idDoc || o.id || String(i);
+                const opt = document.createElement('option');
+                opt.value = key;
+                const nCli = (o.items && o.items.length) ? o.items.length : (o.cliente ? 1 : 0);
+                opt.textContent = labelObjetivo(o) + ' (' + nCli + ' cliente' + (nCli !== 1 ? 's' : '') + ')';
+                if (prev.includes(key) || (prev.length === 0 && i < 3)) opt.selected = true;
+                sel.appendChild(opt);
+            });
+        }
+
+        function renderChartObjetivosDash() {
+            const sel = document.getElementById('dashObjSelect');
+            const ctx = document.getElementById('chartObjetivosDash')?.getContext('2d');
+            if (!ctx) return;
+            if (chartObjetivosDashInstance) chartObjetivosDashInstance.destroy();
+
+            const selected = sel ? Array.from(sel.selectedOptions).map(o => o.value) : [];
+            const lista = (window.objetivos || []).filter((o, i) => {
+                const key = o.idDoc || o.id || String(i);
+                return selected.includes(key);
+            });
+
+            const labels = lista.map(o => labelObjetivo(o));
+            const data = lista.map(o => pctCumplimientoObjetivo(o));
+            const colors = data.map(p => p >= 100 ? 'rgba(16,185,129,0.85)' : p >= 50 ? 'rgba(245,158,11,0.85)' : 'rgba(59,130,246,0.8)');
+
+            chartObjetivosDashInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels.length ? labels : ['Sin objetivos seleccionados'],
+                    datasets: [{
+                        label: '% cumplimiento',
+                        data: data.length ? data : [0],
+                        backgroundColor: colors.length ? colors : ['#64748b'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (c) => (c.parsed.y != null ? c.parsed.y : c.parsed.x) + '% de la meta'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#94a3b8', maxRotation: 45, font: { size: 10 } }, grid: { color: '#1e3a5f' } },
+                        y: {
+                            min: 0, max: 100,
+                            ticks: { color: '#94a3b8', callback: v => v + '%' },
+                            grid: { color: '#1e3a5f' },
+                            title: { display: true, text: '% Cumplimiento', color: '#10b981' }
+                        }
+                    }
+                }
+            });
+        }
+
 
         function renderVentas() {
             if (!window.currentUser) return;
@@ -2007,6 +2462,527 @@
             document.getElementById('agenteRol').value = u.rol || 'Agente';
             document.getElementById('modalAgente').classList.remove('hidden');
         }
+
+
+        // ===== OBJETIVOS SEMANALES (multi-cliente) =====
+        window.objChartInstances = window.objChartInstances || {};
+        window._objFilaCounter = 0;
+
+        function litrosPorCarga(tipo) {
+            return tipo === 'Full' ? 60000 : 30000;
+        }
+
+        function normalizarObjetivo(o) {
+            // Compatibilidad con objetivos antiguos (un solo cliente)
+            if (o.items && Array.isArray(o.items)) return o;
+            if (o.cliente) {
+                return {
+                    ...o,
+                    items: [{
+                        cliente: o.cliente,
+                        producto: o.producto || 'Diésel',
+                        numero: o.numero || 1,
+                        tipoCarga: o.tipoCarga || 'Sencillo',
+                        litrosObjetivo: o.litrosObjetivo || ((o.numero || 1) * litrosPorCarga(o.tipoCarga || 'Sencillo')),
+                        cumplido: o.cumplido || 'pendiente',
+                        estatusObs: o.estatusObs || ''
+                    }],
+                    notasGenerales: o.notasGenerales || ''
+                };
+            }
+            return { ...o, items: o.items || [], notasGenerales: o.notasGenerales || '' };
+        }
+
+        function litrosVendidosItem(obj, item) {
+            const ini = obj.fechaInicio;
+            const fin = obj.fechaFin;
+            return (window.ventas || []).filter(v => {
+                if ((v.cliente || '') !== (item.cliente || '')) return false;
+                if (item.producto && v.producto && v.producto !== item.producto) return false;
+                const f = v.fecha || '';
+                return f >= ini && f <= fin;
+            }).reduce((acc, v) => acc + (parseFloat(v.litros) || 0), 0);
+        }
+
+        function opcionesClientesHtml(selected) {
+            let html = '';
+            (window.clientes || []).forEach(c => {
+                html += `<option value="${c.nombre}" ${c.nombre === selected ? 'selected' : ''}>${c.nombre}</option>`;
+            });
+            if (selected && !(window.clientes || []).find(c => c.nombre === selected)) {
+                html += `<option value="${selected}" selected>${selected}</option>`;
+            }
+            if (!html) html = '<option value="">— Sin clientes —</option>';
+            return html;
+        }
+
+        function agregarFilaClienteObj(data) {
+            data = data || {};
+            const id = 'objfila_' + (++window._objFilaCounter);
+            const n = data.numero || 1;
+            const tipo = data.tipoCarga || 'Sencillo';
+            const meta = data.litrosObjetivo || (n * litrosPorCarga(tipo));
+            const cont = document.getElementById('objClientesFilas');
+            const div = document.createElement('div');
+            div.className = 'bg-slate-900 border border-regio rounded-lg p-3 space-y-2 obj-fila-cliente';
+            div.id = id;
+            div.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase">Cliente</span>
+                    <button type="button" onclick="document.getElementById('${id}').remove()" class="text-red-400 hover:text-red-300 text-xs" title="Quitar">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+                </div>
+                <select class="obj-cli w-full bg-slate-800 border border-regio rounded px-2 py-1.5 text-white text-xs" required>
+                    ${opcionesClientesHtml(data.cliente || '')}
+                </select>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <div>
+                        <label class="text-[10px] text-slate-400">Combustible</label>
+                        <select class="obj-prod w-full bg-slate-800 border border-regio rounded px-2 py-1.5 text-white text-xs">
+                            <option value="Diésel" ${(data.producto||'Diésel')==='Diésel'?'selected':''}>Diésel</option>
+                            <option value="Gasolina Regular" ${data.producto==='Gasolina Regular'?'selected':''}>Gasolina Regular</option>
+                            <option value="Gasolina Premium" ${data.producto==='Gasolina Premium'?'selected':''}>Gasolina Premium</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-slate-400">Cargas (1-99)</label>
+                        <input type="number" min="1" max="99" value="${n}" class="obj-num w-full bg-slate-800 border border-regio rounded px-2 py-1.5 text-white text-xs" oninput="recalcFilaMeta('${id}')">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-slate-400">Tipo</label>
+                        <select class="obj-tipo w-full bg-slate-800 border border-regio rounded px-2 py-1.5 text-white text-xs" onchange="recalcFilaMeta('${id}')">
+                            <option value="Sencillo" ${tipo==='Sencillo'?'selected':''}>Sencillo 30k</option>
+                            <option value="Full" ${tipo==='Full'?'selected':''}>Full 60k</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-slate-400">Litros meta</label>
+                        <input type="text" class="obj-meta w-full bg-slate-950 border border-regio rounded px-2 py-1.5 text-amber-400 text-xs font-bold" readonly value="${Number(meta).toLocaleString('es-MX')} Lts">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-[10px] text-slate-400">Cumplido</label>
+                        <select class="obj-cumple w-full bg-slate-800 border border-regio rounded px-2 py-1.5 text-white text-xs">
+                            <option value="pendiente" ${(data.cumplido||'pendiente')==='pendiente'?'selected':''}>Pendiente</option>
+                            <option value="si" ${data.cumplido==='si'?'selected':''}>Sí</option>
+                            <option value="no" ${data.cumplido==='no'?'selected':''}>No</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-slate-400">Estatus / notas del cliente</label>
+                        <input type="text" class="obj-nota w-full bg-slate-800 border border-regio rounded px-2 py-1.5 text-white text-xs" value="${(data.estatusObs||'').replace(/"/g,'&quot;')}" placeholder="Notas...">
+                    </div>
+                </div>
+            `;
+            cont.appendChild(div);
+        }
+
+        function recalcFilaMeta(filaId) {
+            const fila = document.getElementById(filaId);
+            if (!fila) return;
+            const n = Math.min(99, Math.max(1, parseInt(fila.querySelector('.obj-num').value, 10) || 1));
+            const tipo = fila.querySelector('.obj-tipo').value;
+            fila.querySelector('.obj-num').value = n;
+            fila.querySelector('.obj-meta').value = (n * litrosPorCarga(tipo)).toLocaleString('es-MX') + ' Lts';
+        }
+
+        function leerFilasClientesObj() {
+            const filas = document.querySelectorAll('#objClientesFilas .obj-fila-cliente');
+            const items = [];
+            filas.forEach(fila => {
+                const cliente = fila.querySelector('.obj-cli').value;
+                if (!cliente) return;
+                let numero = parseInt(fila.querySelector('.obj-num').value, 10) || 1;
+                numero = Math.min(99, Math.max(1, numero));
+                const tipoCarga = fila.querySelector('.obj-tipo').value;
+                items.push({
+                    cliente,
+                    producto: fila.querySelector('.obj-prod').value,
+                    numero,
+                    tipoCarga,
+                    litrosObjetivo: numero * litrosPorCarga(tipoCarga),
+                    cumplido: fila.querySelector('.obj-cumple').value,
+                    estatusObs: (fila.querySelector('.obj-nota').value || '').trim()
+                });
+            });
+            return items;
+        }
+
+        function destruirChartsObjetivos() {
+            Object.keys(window.objChartInstances || {}).forEach(k => {
+                try { window.objChartInstances[k].destroy(); } catch(e) {}
+                delete window.objChartInstances[k];
+            });
+        }
+
+        function renderObjetivos() {
+            if (!window.currentUser) return;
+            const cont = document.getElementById('listaObjetivosCards');
+            if (!cont) return;
+            destruirChartsObjetivos();
+            cont.innerHTML = '';
+            const isAdmin = window.currentUser.rol === 'Admin';
+
+            const lista = (window.objetivos || []).slice().sort((a, b) => (b.fechaInicio || '').localeCompare(a.fechaInicio || ''));
+            if (!lista.length) {
+                cont.innerHTML = `<div class="bg-regio-card border border-regio rounded-xl p-8 text-center text-slate-500">No hay objetivos semanales. El administrador puede crear uno nuevo.</div>`;
+                return;
+            }
+
+            lista.forEach((raw, listIdx) => {
+                const o = normalizarObjetivo(raw);
+                const realIdx = window.objetivos.findIndex(item =>
+                    (item.idDoc && item.idDoc === raw.idDoc) || (item.id === raw.id)
+                );
+                const chartId = 'chartObj_' + (raw.idDoc || raw.id || realIdx);
+
+                let totalMeta = 0, totalVend = 0, cumplidos = 0;
+                const rows = (o.items || []).map((item, itemIdx) => {
+                    const meta = item.litrosObjetivo || ((item.numero || 1) * litrosPorCarga(item.tipoCarga || 'Sencillo'));
+                    const vendidos = litrosVendidosItem(o, item);
+                    totalMeta += meta;
+                    totalVend += vendidos;
+                    const auto = vendidos >= meta;
+                    if (item.cumplido === 'si' || auto) cumplidos++;
+                    const pct = meta > 0 ? Math.min(100, Math.round(vendidos / meta * 100)) : 0;
+
+                    const cumpleCtrl = isAdmin
+                        ? `<select onchange="actualizarItemCumplido(${realIdx}, ${itemIdx}, this.value)" class="bg-slate-900 border border-regio rounded px-1.5 py-1 text-[10px] text-white">
+                                <option value="pendiente" ${item.cumplido==='pendiente'||!item.cumplido?'selected':''}>Pendiente</option>
+                                <option value="si" ${item.cumplido==='si'?'selected':''}>Sí</option>
+                                <option value="no" ${item.cumplido==='no'?'selected':''}>No</option>
+                           </select>`
+                        : `<span class="text-[10px] font-bold ${item.cumplido==='si'?'text-emerald-400':item.cumplido==='no'?'text-red-400':'text-slate-400'}">${item.cumplido==='si'?'Sí':item.cumplido==='no'?'No':'Pendiente'}</span>`;
+
+                    const notaCtrl = isAdmin
+                        ? `<input type="text" value="${(item.estatusObs||'').replace(/"/g,'&quot;')}" class="w-full bg-slate-900 border border-regio rounded px-2 py-1 text-[10px] text-slate-200"
+                            onblur="actualizarItemNota(${realIdx}, ${itemIdx}, this.value)" placeholder="Estatus...">`
+                        : `<span class="text-[10px] text-slate-400">${item.estatusObs || '-'}</span>`;
+
+                    return `<tr>
+                        <td class="p-2 font-semibold text-white">${item.cliente}</td>
+                        <td class="p-2">${item.producto || '-'}</td>
+                        <td class="p-2 text-center">${item.numero || 1}</td>
+                        <td class="p-2">${item.tipoCarga || 'Sencillo'}</td>
+                        <td class="p-2 text-amber-400 font-bold">${meta.toLocaleString('es-MX')}</td>
+                        <td class="p-2 font-bold ${auto?'text-emerald-400':'text-cyan-300'}">${vendidos.toLocaleString('es-MX')}</td>
+                        <td class="p-2">
+                            <div class="w-full bg-slate-800 rounded h-2 mb-1"><div class="h-2 rounded ${pct>=100?'bg-emerald-500':'bg-amber-500'}" style="width:${pct}%"></div></div>
+                            <span class="text-[9px] text-slate-400">${pct}%</span>
+                        </td>
+                        <td class="p-2">${cumpleCtrl}<div class="text-[9px] text-slate-500">${auto?'Meta en ventas ✓':''}</div></td>
+                        <td class="p-2 min-w-[120px]">${notaCtrl}</td>
+                    </tr>`;
+                }).join('');
+
+                const pctGlobal = totalMeta > 0 ? Math.min(100, Math.round(totalVend / totalMeta * 100)) : 0;
+                const adminBtns = isAdmin ? `
+                    <button onclick="editarObjetivo(${realIdx})" class="px-2 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 rounded border border-regio"><i class="fa-solid fa-pen mr-1"></i>Editar</button>
+                    <button onclick="eliminarObjetivo(${realIdx})" class="px-2 py-1 text-xs bg-slate-800 hover:bg-red-900/40 text-red-300 rounded border border-regio"><i class="fa-solid fa-trash mr-1"></i>Eliminar</button>
+                ` : '';
+
+                cont.innerHTML += `
+                <div class="bg-regio-card border border-regio rounded-xl overflow-hidden shadow-lg">
+                    <div class="p-4 sm:p-5 border-b border-regio flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                        <div>
+                            <h3 class="text-base sm:text-lg font-bold text-white"><i class="fa-solid fa-calendar-week text-amber-500 mr-2"></i>${o.fechaInicio || '?'} → ${o.fechaFin || '?'}</h3>
+                            <p class="text-xs text-slate-400 mt-0.5">${(o.items||[]).length} cliente(s) · Avance global <b class="text-amber-400">${pctGlobal}%</b> · Cumplidos ${cumplidos}/${(o.items||[]).length}</p>
+                            ${o.notasGenerales ? `<p class="text-xs text-slate-300 mt-1 italic">${o.notasGenerales}</p>` : ''}
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="exportarObjetivoPDF(${realIdx})" class="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white font-bold rounded">
+                                <i class="fa-solid fa-file-pdf mr-1"></i> Exportar PDF
+                            </button>
+                            ${adminBtns}
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-0">
+                        <div class="lg:col-span-2 overflow-x-auto p-3">
+                            <table class="w-full text-left text-xs">
+                                <thead class="text-[10px] uppercase text-slate-400 bg-slate-900/80">
+                                    <tr>
+                                        <th class="p-2">Cliente</th>
+                                        <th class="p-2">Producto</th>
+                                        <th class="p-2">Cargas</th>
+                                        <th class="p-2">Tipo</th>
+                                        <th class="p-2">Meta Lts</th>
+                                        <th class="p-2">Vendidos</th>
+                                        <th class="p-2">Avance</th>
+                                        <th class="p-2">Cumplido</th>
+                                        <th class="p-2">Estatus</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-regio">${rows || '<tr><td colspan="9" class="p-3 text-slate-500">Sin clientes</td></tr>'}</tbody>
+                            </table>
+                        </div>
+                        <div class="p-4 border-t lg:border-t-0 lg:border-l border-regio">
+                            <p class="text-xs font-bold text-slate-300 mb-2 text-center">Avance por cliente (%)</p>
+                            <div class="relative h-56 w-full">
+                                <canvas id="${chartId}"></canvas>
+                            </div>
+                            <p class="text-[10px] text-center text-slate-500 mt-2">${totalVend.toLocaleString('es-MX')} / ${totalMeta.toLocaleString('es-MX')} Lts</p>
+                        </div>
+                    </div>
+                </div>`;
+
+                // Chart after DOM insert - schedule
+                setTimeout(() => {
+                    const canvas = document.getElementById(chartId);
+                    if (!canvas || typeof Chart === 'undefined') return;
+                    const labels = (o.items || []).map(it => it.cliente);
+                    const dataPct = (o.items || []).map(it => {
+                        const meta = it.litrosObjetivo || ((it.numero || 1) * litrosPorCarga(it.tipoCarga || 'Sencillo'));
+                        const vend = litrosVendidosItem(o, it);
+                        return meta > 0 ? Math.min(100, Math.round(vend / meta * 100)) : 0;
+                    });
+                    const colors = dataPct.map(p => p >= 100 ? 'rgba(16, 185, 129, 0.8)' : p >= 50 ? 'rgba(245, 158, 11, 0.8)' : 'rgba(59, 130, 246, 0.75)');
+                    if (window.objChartInstances[chartId]) {
+                        try { window.objChartInstances[chartId].destroy(); } catch(e) {}
+                    }
+                    window.objChartInstances[chartId] = new Chart(canvas.getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels: labels.length ? labels : ['Sin clientes'],
+                            datasets: [{
+                                label: '% cumplimiento',
+                                data: dataPct.length ? dataPct : [0],
+                                backgroundColor: colors.length ? colors : ['#64748b'],
+                                borderWidth: 0
+                            }]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    callbacks: {
+                                        label: (ctx) => ctx.parsed.x + '% de la meta'
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    min: 0, max: 100,
+                                    ticks: { color: '#94a3b8', callback: v => v + '%' },
+                                    grid: { color: '#1e3a5f' }
+                                },
+                                y: {
+                                    ticks: { color: '#cbd5e1', font: { size: 10 } },
+                                    grid: { display: false }
+                                }
+                            }
+                        }
+                    });
+                }, 50);
+            });
+        }
+
+        function openModalObjetivo() {
+            if (!window.currentUser || window.currentUser.rol !== 'Admin') return;
+            document.getElementById('modalObjetivoTitulo').innerText = 'Nuevo Objetivo Semanal';
+            document.getElementById('objEditIndex').value = '';
+            document.getElementById('objFechaInicio').value = '';
+            document.getElementById('objFechaFin').value = '';
+            document.getElementById('objNotasGenerales').value = '';
+            document.getElementById('objClientesFilas').innerHTML = '';
+            agregarFilaClienteObj();
+            document.getElementById('modalObjetivo').classList.remove('hidden');
+        }
+
+        function editarObjetivo(idx) {
+            if (!window.currentUser || window.currentUser.rol !== 'Admin') return;
+            const raw = window.objetivos[idx];
+            if (!raw) return;
+            const o = normalizarObjetivo(raw);
+            document.getElementById('modalObjetivoTitulo').innerText = 'Editar Objetivo Semanal';
+            document.getElementById('objEditIndex').value = idx;
+            document.getElementById('objFechaInicio').value = o.fechaInicio || '';
+            document.getElementById('objFechaFin').value = o.fechaFin || '';
+            document.getElementById('objNotasGenerales').value = o.notasGenerales || '';
+            document.getElementById('objClientesFilas').innerHTML = '';
+            (o.items || []).forEach(it => agregarFilaClienteObj(it));
+            if (!(o.items || []).length) agregarFilaClienteObj();
+            document.getElementById('modalObjetivo').classList.remove('hidden');
+        }
+
+        window.guardarObjetivo = async function() {
+            if (!window.currentUser || window.currentUser.rol !== 'Admin') return;
+            const editIdx = document.getElementById('objEditIndex').value;
+            const fechaInicio = document.getElementById('objFechaInicio').value;
+            const fechaFin = document.getElementById('objFechaFin').value;
+            const notasGenerales = (document.getElementById('objNotasGenerales').value || '').trim();
+            const items = leerFilasClientesObj();
+
+            if (!fechaInicio || !fechaFin) {
+                alert('Selecciona el rango de fechas de la semana.');
+                return;
+            }
+            if (fechaFin < fechaInicio) {
+                alert('La fecha fin debe ser igual o posterior a la fecha inicio.');
+                return;
+            }
+            if (!items.length) {
+                alert('Agrega al menos un cliente al objetivo.');
+                return;
+            }
+
+            const datos = { fechaInicio, fechaFin, notasGenerales, items };
+
+            if (editIdx !== '') {
+                const idx = parseInt(editIdx, 10);
+                const target = window.objetivos[idx];
+                if (!target) return;
+                // limpiar campos legacy de un solo cliente
+                const limpio = { ...datos };
+                if (window.dataMode === 'firebase' && window.db && target.idDoc) {
+                    await updateDoc(doc(window.db, "objetivos", target.idDoc), limpio);
+                } else {
+                    Object.assign(target, limpio);
+                    delete target.cliente; delete target.producto; delete target.numero;
+                    delete target.tipoCarga; delete target.litrosObjetivo; delete target.cumplido; delete target.estatusObs;
+                    await saveToLocal();
+                    renderObjetivos();
+                }
+            } else {
+                const nuevo = {
+                    id: 'RF-OBJ-' + Date.now(),
+                    ...datos,
+                    creadoPor: window.currentUser.nombre,
+                    fechaCreacion: new Date().toISOString().split('T')[0]
+                };
+                if (window.dataMode === 'firebase' && window.db) {
+                    await addDoc(collection(window.db, "objetivos"), nuevo);
+                } else {
+                    window.objetivos.push(nuevo);
+                    await saveToLocal();
+                    renderObjetivos();
+                }
+            }
+            closeModal('modalObjetivo');
+        };
+
+        window.eliminarObjetivo = async function(idx) {
+            if (!window.currentUser || window.currentUser.rol !== 'Admin') return;
+            const target = window.objetivos[idx];
+            if (!target) return;
+            if (!confirm('¿Eliminar este objetivo semanal completo?')) return;
+            if (window.dataMode === 'firebase' && window.db && target.idDoc) {
+                await deleteDoc(doc(window.db, "objetivos", target.idDoc));
+            } else {
+                window.objetivos.splice(idx, 1);
+                await saveToLocal();
+                renderObjetivos();
+            }
+        };
+
+        async function persistObjetivoItems(idx) {
+            const target = window.objetivos[idx];
+            if (!target) return;
+            const o = normalizarObjetivo(target);
+            if (window.dataMode === 'firebase' && window.db && target.idDoc) {
+                await updateDoc(doc(window.db, "objetivos", target.idDoc), { items: o.items, notasGenerales: o.notasGenerales || '' });
+            } else {
+                target.items = o.items;
+                await saveToLocal();
+                renderObjetivos();
+            }
+        }
+
+        window.actualizarItemCumplido = async function(objIdx, itemIdx, valor) {
+            if (!window.currentUser || window.currentUser.rol !== 'Admin') return;
+            const target = window.objetivos[objIdx];
+            if (!target) return;
+            const o = normalizarObjetivo(target);
+            if (!o.items[itemIdx]) return;
+            o.items[itemIdx].cumplido = valor;
+            target.items = o.items;
+            if (window.dataMode === 'firebase' && window.db && target.idDoc) {
+                await updateDoc(doc(window.db, "objetivos", target.idDoc), { items: o.items });
+            } else {
+                await saveToLocal();
+                renderObjetivos();
+            }
+        };
+
+        window.actualizarItemNota = async function(objIdx, itemIdx, texto) {
+            if (!window.currentUser || window.currentUser.rol !== 'Admin') return;
+            const target = window.objetivos[objIdx];
+            if (!target) return;
+            const o = normalizarObjetivo(target);
+            if (!o.items[itemIdx]) return;
+            const estatusObs = (texto || '').trim();
+            if ((o.items[itemIdx].estatusObs || '') === estatusObs) return;
+            o.items[itemIdx].estatusObs = estatusObs;
+            target.items = o.items;
+            if (window.dataMode === 'firebase' && window.db && target.idDoc) {
+                await updateDoc(doc(window.db, "objetivos", target.idDoc), { items: o.items });
+            } else {
+                await saveToLocal();
+            }
+        };
+
+        window.exportarObjetivoPDF = function(idx) {
+            const raw = window.objetivos[idx];
+            if (!raw) return;
+            const o = normalizarObjetivo(raw);
+            let totalMeta = 0, totalVend = 0;
+            let rowsHtml = '';
+            (o.items || []).forEach(item => {
+                const meta = item.litrosObjetivo || ((item.numero || 1) * litrosPorCarga(item.tipoCarga || 'Sencillo'));
+                const vend = litrosVendidosItem(o, item);
+                totalMeta += meta; totalVend += vend;
+                const pct = meta > 0 ? Math.min(100, Math.round(vend / meta * 100)) : 0;
+                rowsHtml += `<tr>
+                    <td style="border:1px solid #ccc;padding:6px;">${item.cliente}</td>
+                    <td style="border:1px solid #ccc;padding:6px;">${item.producto || ''}</td>
+                    <td style="border:1px solid #ccc;padding:6px;text-align:center;">${item.numero || 1}</td>
+                    <td style="border:1px solid #ccc;padding:6px;">${item.tipoCarga || ''}</td>
+                    <td style="border:1px solid #ccc;padding:6px;text-align:right;">${meta.toLocaleString('es-MX')}</td>
+                    <td style="border:1px solid #ccc;padding:6px;text-align:right;">${vend.toLocaleString('es-MX')}</td>
+                    <td style="border:1px solid #ccc;padding:6px;text-align:center;">${pct}%</td>
+                    <td style="border:1px solid #ccc;padding:6px;">${item.cumplido === 'si' ? 'Sí' : item.cumplido === 'no' ? 'No' : 'Pendiente'}</td>
+                    <td style="border:1px solid #ccc;padding:6px;">${item.estatusObs || ''}</td>
+                </tr>`;
+            });
+            const pctG = totalMeta > 0 ? Math.min(100, Math.round(totalVend / totalMeta * 100)) : 0;
+            const w = window.open('', '_blank');
+            w.document.write(`<!DOCTYPE html><html><head><title>Objetivo ${o.fechaInicio} - ${o.fechaFin}</title>
+                <style>
+                    body{font-family:Arial,sans-serif;padding:24px;color:#111}
+                    h1{font-size:20px;margin:0 0 4px}
+                    h2{font-size:14px;color:#555;font-weight:normal;margin:0 0 16px}
+                    table{width:100%;border-collapse:collapse;font-size:12px;margin-top:12px}
+                    th{background:#0b1e36;color:#fff;padding:8px;border:1px solid #333;text-align:left}
+                    .kpi{display:flex;gap:16px;margin:12px 0}
+                    .kpi div{border:1px solid #ddd;padding:10px 14px;border-radius:6px}
+                    @media print{button{display:none}}
+                </style></head><body>
+                <button onclick="window.print()" style="padding:8px 16px;margin-bottom:12px;cursor:pointer;background:#dc2626;color:#fff;border:none;border-radius:4px;font-weight:bold">Imprimir / Guardar PDF</button>
+                <h1>REGIO FUEL — Objetivo Semanal</h1>
+                <h2>Periodo: ${o.fechaInicio || ''} → ${o.fechaFin || ''}</h2>
+                ${o.notasGenerales ? `<p><b>Notas:</b> ${o.notasGenerales}</p>` : ''}
+                <div class="kpi">
+                    <div><b>Meta total</b><br>${totalMeta.toLocaleString('es-MX')} Lts</div>
+                    <div><b>Vendidos</b><br>${totalVend.toLocaleString('es-MX')} Lts</div>
+                    <div><b>Avance</b><br>${pctG}%</div>
+                    <div><b>Clientes</b><br>${(o.items||[]).length}</div>
+                </div>
+                <table>
+                    <thead><tr>
+                        <th>Cliente</th><th>Producto</th><th>Cargas</th><th>Tipo</th>
+                        <th>Meta Lts</th><th>Vendidos</th><th>Avance</th><th>Cumplido</th><th>Estatus</th>
+                    </tr></thead>
+                    <tbody>${rowsHtml}</tbody>
+                </table>
+                <p style="margin-top:24px;font-size:11px;color:#888">Generado: ${new Date().toLocaleString('es-MX')} · REGIO FUEL</p>
+                <script>setTimeout(function(){ window.print(); }, 400);<\/script>
+                </body></html>`);
+            w.document.close();
+        };
 
         function generarReporteMensual() {
             if(!window.currentUser || window.currentUser.rol !== 'Admin') return;
