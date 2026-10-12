@@ -791,16 +791,78 @@
     <div id="modalObjetivo" class="fixed inset-0 bg-black/70 hidden z-50 flex items-center justify-center p-4">
         <div class="bg-regio-card border border-regio rounded-xl p-5 sm:p-6 max-w-2xl w-full max-h-[92vh] overflow-y-auto">
             <h3 id="modalObjetivoTitulo" class="text-lg sm:text-xl font-bold text-white mb-4">Nuevo Objetivo Semanal</h3>
-            <form onsubmit="event.preventDefault(); guardarObjetivo();" class="space-y-4">
+            <form onsubmit="event.preventDefault(); window.guardarObjetivo();" class="space-y-4" novalidate>
                 <input type="hidden" id="objEditIndex" value="">
-                <div class="grid grid-cols-2 gap-2 sm:gap-3">
+                <div class="space-y-3">
                     <div>
                         <label class="block text-xs font-bold text-slate-300 mb-1">Fecha inicio</label>
-                        <input type="date" id="objFechaInicio" required class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm">
+                        <div class="grid grid-cols-3 gap-2">
+                            <div>
+                                <label class="block text-[10px] text-slate-500 mb-0.5">Día</label>
+                                <select id="objIniDia" class="w-full bg-slate-900 border border-regio rounded px-2 py-2 text-white text-xs sm:text-sm"></select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-slate-500 mb-0.5">Mes</label>
+                                <select id="objIniMes" class="w-full bg-slate-900 border border-regio rounded px-2 py-2 text-white text-xs sm:text-sm">
+                                    <option value="01">Enero</option>
+                                    <option value="02">Febrero</option>
+                                    <option value="03">Marzo</option>
+                                    <option value="04">Abril</option>
+                                    <option value="05">Mayo</option>
+                                    <option value="06">Junio</option>
+                                    <option value="07">Julio</option>
+                                    <option value="08">Agosto</option>
+                                    <option value="09">Septiembre</option>
+                                    <option value="10">Octubre</option>
+                                    <option value="11">Noviembre</option>
+                                    <option value="12">Diciembre</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-slate-500 mb-0.5">Año</label>
+                                <select id="objIniAnio" class="w-full bg-slate-900 border border-regio rounded px-2 py-2 text-white text-xs sm:text-sm">
+                                    <option value="2025">2025</option>
+                                    <option value="2026" selected>2026</option>
+                                    <option value="2027">2027</option>
+                                    <option value="2028">2028</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-300 mb-1">Fecha fin</label>
-                        <input type="date" id="objFechaFin" required class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm">
+                        <div class="grid grid-cols-3 gap-2">
+                            <div>
+                                <label class="block text-[10px] text-slate-500 mb-0.5">Día</label>
+                                <select id="objFinDia" class="w-full bg-slate-900 border border-regio rounded px-2 py-2 text-white text-xs sm:text-sm"></select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-slate-500 mb-0.5">Mes</label>
+                                <select id="objFinMes" class="w-full bg-slate-900 border border-regio rounded px-2 py-2 text-white text-xs sm:text-sm">
+                                    <option value="01">Enero</option>
+                                    <option value="02">Febrero</option>
+                                    <option value="03">Marzo</option>
+                                    <option value="04">Abril</option>
+                                    <option value="05">Mayo</option>
+                                    <option value="06">Junio</option>
+                                    <option value="07">Julio</option>
+                                    <option value="08">Agosto</option>
+                                    <option value="09">Septiembre</option>
+                                    <option value="10">Octubre</option>
+                                    <option value="11">Noviembre</option>
+                                    <option value="12">Diciembre</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-slate-500 mb-0.5">Año</label>
+                                <select id="objFinAnio" class="w-full bg-slate-900 border border-regio rounded px-2 py-2 text-white text-xs sm:text-sm">
+                                    <option value="2025">2025</option>
+                                    <option value="2026" selected>2026</option>
+                                    <option value="2027">2027</option>
+                                    <option value="2028">2028</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div>
@@ -925,6 +987,15 @@
         window.firebaseConfig = null;
         window.db = null;
         window.firebaseReady = false;
+        // Exponer helpers de Firestore y guardado local para el script de UI
+        window.addDoc = addDoc;
+        window.updateDoc = updateDoc;
+        window.deleteDoc = deleteDoc;
+        window.setDoc = setDoc;
+        window.doc = doc;
+        window.collection = collection;
+        window.onSnapshot = onSnapshot;
+        window.getFirestore = getFirestore;
 
         // Detectar si estamos en Electron
         const isElectron = !!(window.electronAPI);
@@ -975,6 +1046,7 @@
             localStorage.setItem('regioFuelData', JSON.stringify(data));
             return true;
         }
+        window.saveToLocal = saveToLocal;
 
         // ===== FIREBASE HELPERS =====
         function initFirebase(config) {
@@ -2533,7 +2605,7 @@
                         <i class="fa-solid fa-times"></i>
                     </button>
                 </div>
-                <select class="obj-cli w-full bg-slate-800 border border-regio rounded px-2 py-1.5 text-white text-xs" required>
+                <select class="obj-cli w-full bg-slate-800 border border-regio rounded px-2 py-1.5 text-white text-xs">
                     ${opcionesClientesHtml(data.cliente || '')}
                 </select>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -2781,14 +2853,96 @@
             });
         }
 
-        function openModalObjetivo() {
-            if (!window.currentUser || window.currentUser.rol !== 'Admin') return;
+
+        function llenarDiasSelect(selectId, mes, anio, diaSel) {
+            const sel = document.getElementById(selectId);
+            if (!sel) return;
+            const m = parseInt(mes, 10) || 1;
+            const y = parseInt(anio, 10) || 2026;
+            const max = new Date(y, m, 0).getDate();
+            const prev = diaSel != null ? parseInt(diaSel, 10) : parseInt(sel.value, 10);
+            sel.innerHTML = '';
+            for (let d = 1; d <= max; d++) {
+                const v = String(d).padStart(2, '0');
+                const opt = document.createElement('option');
+                opt.value = v;
+                opt.textContent = v;
+                sel.appendChild(opt);
+            }
+            const use = (prev >= 1 && prev <= max) ? prev : 1;
+            sel.value = String(use).padStart(2, '0');
+        }
+
+        function armarFechaObj(prefijo) {
+            // prefijo: 'objIni' | 'objFin'
+            const d = document.getElementById(prefijo + 'Dia')?.value;
+            const m = document.getElementById(prefijo + 'Mes')?.value;
+            const a = document.getElementById(prefijo + 'Anio')?.value;
+            if (!d || !m || !a) return '';
+            return a + '-' + m + '-' + d;
+        }
+
+        function setFechaObjSelects(prefijo, fechaStr) {
+            // fechaStr YYYY-MM-DD
+            let y = '2026', m = '01', d = '01';
+            if (fechaStr && /^\d{4}-\d{2}-\d{2}/.test(fechaStr)) {
+                y = fechaStr.slice(0, 4);
+                m = fechaStr.slice(5, 7);
+                d = fechaStr.slice(8, 10);
+            }
+            const anioEl = document.getElementById(prefijo + 'Anio');
+            const mesEl = document.getElementById(prefijo + 'Mes');
+            if (anioEl) {
+                if (![...anioEl.options].some(o => o.value === y)) {
+                    const o = document.createElement('option');
+                    o.value = y; o.textContent = y;
+                    anioEl.appendChild(o);
+                }
+                anioEl.value = y;
+            }
+            if (mesEl) mesEl.value = m;
+            llenarDiasSelect(prefijo + 'Dia', m, y, d);
+        }
+
+        function initSelectsFechaObjetivo() {
+            const hoy = new Date();
+            const y = '2026';
+            const m = String(hoy.getMonth() + 1).padStart(2, '0');
+            const d = String(hoy.getDate()).padStart(2, '0');
+            setFechaObjSelects('objIni', y + '-' + m + '-' + d);
+            setFechaObjSelects('objFin', y + '-' + m + '-' + d);
+            // al cambiar mes/año, recalcular días
+            ['objIniMes', 'objIniAnio'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el && !el.dataset.bound) {
+                    el.addEventListener('change', () => {
+                        llenarDiasSelect('objIniDia', document.getElementById('objIniMes').value, document.getElementById('objIniAnio').value);
+                    });
+                    el.dataset.bound = '1';
+                }
+            });
+            ['objFinMes', 'objFinAnio'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el && !el.dataset.bound) {
+                    el.addEventListener('change', () => {
+                        llenarDiasSelect('objFinDia', document.getElementById('objFinMes').value, document.getElementById('objFinAnio').value);
+                    });
+                    el.dataset.bound = '1';
+                }
+            });
+        }
+
+
+                window.openModalObjetivo = function openModalObjetivo() {
+            if (!window.currentUser || window.currentUser.rol !== 'Admin') {
+                alert('Solo el administrador puede crear objetivos.');
+                return;
+            }
             document.getElementById('modalObjetivoTitulo').innerText = 'Nuevo Objetivo Semanal';
             document.getElementById('objEditIndex').value = '';
-            document.getElementById('objFechaInicio').value = '';
-            document.getElementById('objFechaFin').value = '';
             document.getElementById('objNotasGenerales').value = '';
             document.getElementById('objClientesFilas').innerHTML = '';
+            initSelectsFechaObjetivo();
             agregarFilaClienteObj();
             document.getElementById('modalObjetivo').classList.remove('hidden');
         }
@@ -2800,69 +2954,106 @@
             const o = normalizarObjetivo(raw);
             document.getElementById('modalObjetivoTitulo').innerText = 'Editar Objetivo Semanal';
             document.getElementById('objEditIndex').value = idx;
-            document.getElementById('objFechaInicio').value = o.fechaInicio || '';
-            document.getElementById('objFechaFin').value = o.fechaFin || '';
             document.getElementById('objNotasGenerales').value = o.notasGenerales || '';
             document.getElementById('objClientesFilas').innerHTML = '';
+            initSelectsFechaObjetivo();
+            setFechaObjSelects('objIni', o.fechaInicio || '2026-01-01');
+            setFechaObjSelects('objFin', o.fechaFin || '2026-01-01');
             (o.items || []).forEach(it => agregarFilaClienteObj(it));
             if (!(o.items || []).length) agregarFilaClienteObj();
             document.getElementById('modalObjetivo').classList.remove('hidden');
         }
 
         window.guardarObjetivo = async function() {
-            if (!window.currentUser || window.currentUser.rol !== 'Admin') return;
-            const editIdx = document.getElementById('objEditIndex').value;
-            const fechaInicio = document.getElementById('objFechaInicio').value;
-            const fechaFin = document.getElementById('objFechaFin').value;
-            const notasGenerales = (document.getElementById('objNotasGenerales').value || '').trim();
-            const items = leerFilasClientesObj();
-
-            if (!fechaInicio || !fechaFin) {
-                alert('Selecciona el rango de fechas de la semana.');
-                return;
-            }
-            if (fechaFin < fechaInicio) {
-                alert('La fecha fin debe ser igual o posterior a la fecha inicio.');
-                return;
-            }
-            if (!items.length) {
-                alert('Agrega al menos un cliente al objetivo.');
-                return;
-            }
-
-            const datos = { fechaInicio, fechaFin, notasGenerales, items };
-
-            if (editIdx !== '') {
-                const idx = parseInt(editIdx, 10);
-                const target = window.objetivos[idx];
-                if (!target) return;
-                // limpiar campos legacy de un solo cliente
-                const limpio = { ...datos };
-                if (window.dataMode === 'firebase' && window.db && target.idDoc) {
-                    await updateDoc(doc(window.db, "objetivos", target.idDoc), limpio);
-                } else {
-                    Object.assign(target, limpio);
-                    delete target.cliente; delete target.producto; delete target.numero;
-                    delete target.tipoCarga; delete target.litrosObjetivo; delete target.cumplido; delete target.estatusObs;
-                    await saveToLocal();
-                    renderObjetivos();
+            try {
+                if (!window.currentUser) {
+                    alert('Debes iniciar sesión.');
+                    return;
                 }
-            } else {
-                const nuevo = {
-                    id: 'RF-OBJ-' + Date.now(),
-                    ...datos,
-                    creadoPor: window.currentUser.nombre,
-                    fechaCreacion: new Date().toISOString().split('T')[0]
-                };
-                if (window.dataMode === 'firebase' && window.db) {
-                    await addDoc(collection(window.db, "objetivos"), nuevo);
-                } else {
-                    window.objetivos.push(nuevo);
-                    await saveToLocal();
-                    renderObjetivos();
+                if (window.currentUser.rol !== 'Admin') {
+                    alert('Solo el administrador puede guardar objetivos.');
+                    return;
                 }
+                const editIdx = document.getElementById('objEditIndex').value;
+                const fechaInicio = armarFechaObj('objIni');
+                const fechaFin = armarFechaObj('objFin');
+                const notasGenerales = (document.getElementById('objNotasGenerales').value || '').trim();
+                const items = typeof leerFilasClientesObj === 'function' ? leerFilasClientesObj() : [];
+
+                if (!fechaInicio || !fechaFin) {
+                    alert('Selecciona día, mes y año de inicio y fin.');
+                    return;
+                }
+                if (fechaFin < fechaInicio) {
+                    alert('La fecha fin debe ser igual o posterior a la fecha inicio.');
+                    return;
+                }
+                if (!items.length) {
+                    alert('Agrega al menos un cliente al objetivo (elige un cliente de la lista).');
+                    return;
+                }
+
+                const datos = { fechaInicio, fechaFin, notasGenerales, items };
+                const addDocFn = window.addDoc;
+                const updateDocFn = window.updateDoc;
+                const collectionFn = window.collection;
+                const docFn = window.doc;
+                const saveLocal = window.saveToLocal;
+
+                if (editIdx !== '') {
+                    const idx = parseInt(editIdx, 10);
+                    const target = window.objetivos[idx];
+                    if (!target) {
+                        alert('No se encontró el objetivo a editar.');
+                        return;
+                    }
+                    if (window.dataMode === 'firebase' && window.db && target.idDoc && updateDocFn && docFn) {
+                        await updateDocFn(docFn(window.db, "objetivos", target.idDoc), datos);
+                    } else {
+                        Object.assign(target, datos);
+                        delete target.cliente; delete target.producto; delete target.numero;
+                        delete target.tipoCarga; delete target.litrosObjetivo; delete target.cumplido; delete target.estatusObs;
+                        if (saveLocal) await saveLocal();
+                        else {
+                            window.objetivos = window.objetivos || [];
+                            localStorage.setItem('regioFuelData', JSON.stringify({
+                                preciosHoy: window.preciosHoy, usuarios: window.usuarios, clientes: window.clientes,
+                                ventas: window.ventas, objetivos: window.objetivos, modo: window.dataMode, firebaseConfig: window.firebaseConfig
+                            }));
+                        }
+                        if (typeof renderObjetivos === 'function') renderObjetivos();
+                    }
+                } else {
+                    const nuevo = {
+                        id: 'RF-OBJ-' + Date.now(),
+                        ...datos,
+                        creadoPor: window.currentUser.nombre,
+                        fechaCreacion: new Date().toISOString().split('T')[0]
+                    };
+                    if (window.dataMode === 'firebase' && window.db && addDocFn && collectionFn) {
+                        await addDocFn(collectionFn(window.db, "objetivos"), nuevo);
+                    } else {
+                        window.objetivos = window.objetivos || [];
+                        window.objetivos.push(nuevo);
+                        if (saveLocal) await saveLocal();
+                        else {
+                            localStorage.setItem('regioFuelData', JSON.stringify({
+                                preciosHoy: window.preciosHoy, usuarios: window.usuarios, clientes: window.clientes,
+                                ventas: window.ventas, objetivos: window.objetivos, modo: window.dataMode, firebaseConfig: window.firebaseConfig
+                            }));
+                        }
+                        if (typeof renderObjetivos === 'function') renderObjetivos();
+                    }
+                }
+                if (typeof closeModal === 'function') closeModal('modalObjetivo');
+                else {
+                    const m = document.getElementById('modalObjetivo');
+                    if (m) m.classList.add('hidden');
+                }
+            } catch (err) {
+                console.error('Error al guardar objetivo:', err);
+                alert('Error al guardar el objetivo: ' + (err && err.message ? err.message : err));
             }
-            closeModal('modalObjetivo');
         };
 
         window.eliminarObjetivo = async function(idx) {
@@ -2870,27 +3061,18 @@
             const target = window.objetivos[idx];
             if (!target) return;
             if (!confirm('¿Eliminar este objetivo semanal completo?')) return;
-            if (window.dataMode === 'firebase' && window.db && target.idDoc) {
-                await deleteDoc(doc(window.db, "objetivos", target.idDoc));
-            } else {
-                window.objetivos.splice(idx, 1);
-                await saveToLocal();
-                renderObjetivos();
+            try {
+                if (window.dataMode === 'firebase' && window.db && target.idDoc && window.deleteDoc && window.doc) {
+                    await window.deleteDoc(window.doc(window.db, "objetivos", target.idDoc));
+                } else {
+                    window.objetivos.splice(idx, 1);
+                    if (window.saveToLocal) await window.saveToLocal();
+                    if (typeof renderObjetivos === 'function') renderObjetivos();
+                }
+            } catch (e) {
+                alert('Error al eliminar: ' + (e.message || e));
             }
         };
-
-        async function persistObjetivoItems(idx) {
-            const target = window.objetivos[idx];
-            if (!target) return;
-            const o = normalizarObjetivo(target);
-            if (window.dataMode === 'firebase' && window.db && target.idDoc) {
-                await updateDoc(doc(window.db, "objetivos", target.idDoc), { items: o.items, notasGenerales: o.notasGenerales || '' });
-            } else {
-                target.items = o.items;
-                await saveToLocal();
-                renderObjetivos();
-            }
-        }
 
         window.actualizarItemCumplido = async function(objIdx, itemIdx, valor) {
             if (!window.currentUser || window.currentUser.rol !== 'Admin') return;
@@ -2900,11 +3082,15 @@
             if (!o.items[itemIdx]) return;
             o.items[itemIdx].cumplido = valor;
             target.items = o.items;
-            if (window.dataMode === 'firebase' && window.db && target.idDoc) {
-                await updateDoc(doc(window.db, "objetivos", target.idDoc), { items: o.items });
-            } else {
-                await saveToLocal();
-                renderObjetivos();
+            try {
+                if (window.dataMode === 'firebase' && window.db && target.idDoc && window.updateDoc && window.doc) {
+                    await window.updateDoc(window.doc(window.db, "objetivos", target.idDoc), { items: o.items });
+                } else {
+                    if (window.saveToLocal) await window.saveToLocal();
+                    if (typeof renderObjetivos === 'function') renderObjetivos();
+                }
+            } catch (e) {
+                alert('Error al actualizar: ' + (e.message || e));
             }
         };
 
@@ -2918,12 +3104,23 @@
             if ((o.items[itemIdx].estatusObs || '') === estatusObs) return;
             o.items[itemIdx].estatusObs = estatusObs;
             target.items = o.items;
-            if (window.dataMode === 'firebase' && window.db && target.idDoc) {
-                await updateDoc(doc(window.db, "objetivos", target.idDoc), { items: o.items });
-            } else {
-                await saveToLocal();
+            try {
+                if (window.dataMode === 'firebase' && window.db && target.idDoc && window.updateDoc && window.doc) {
+                    await window.updateDoc(window.doc(window.db, "objetivos", target.idDoc), { items: o.items });
+                } else {
+                    if (window.saveToLocal) await window.saveToLocal();
+                }
+            } catch (e) {
+                console.error(e);
             }
         };
+
+        window.agregarFilaClienteObj = agregarFilaClienteObj;
+        window.leerFilasClientesObj = leerFilasClientesObj;
+        window.recalcFilaMeta = recalcFilaMeta;
+        window.editarObjetivo = editarObjetivo;
+        window.renderObjetivos = renderObjetivos;
+        if (typeof openModalObjetivo === 'function') window.openModalObjetivo = openModalObjetivo;
 
         window.exportarObjetivoPDF = function(idx) {
             const raw = window.objetivos[idx];
