@@ -507,9 +507,14 @@
                     <p class="text-xs text-slate-400">Metas semanales con varios clientes, avance y gráficas</p>
                     <p class="text-[10px] text-slate-500 mt-1">* Avance: Entregada 100% · En Tránsito 50% · Detenida/Contratiempo 25%</p>
                 </div>
-                <button onclick="openModalObjetivo()" class="admin-only bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm transition">
-                    <i class="fa-solid fa-plus mr-1"></i> Nuevo Objetivo Semanal
-                </button>
+                <div class="admin-only flex flex-wrap gap-2">
+                    <button type="button" onclick="openModalObjetivo('clientes')" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm transition">
+                        <i class="fa-solid fa-users mr-1"></i> Objetivo por clientes
+                    </button>
+                    <button type="button" onclick="openModalObjetivo('litros')" class="bg-cyan-500 hover:bg-cyan-600 text-slate-950 font-bold px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm transition">
+                        <i class="fa-solid fa-droplet mr-1"></i> Objetivo por litros
+                    </button>
+                </div>
             </div>
             <div id="listaObjetivosCards" class="space-y-6"></div>
         </section>
@@ -794,6 +799,7 @@
             <h3 id="modalObjetivoTitulo" class="text-lg sm:text-xl font-bold text-white mb-4">Nuevo Objetivo Semanal</h3>
             <form onsubmit="event.preventDefault(); window.guardarObjetivo();" class="space-y-4" novalidate>
                 <input type="hidden" id="objEditIndex" value="">
+                <input type="hidden" id="objTipo" value="clientes">
                 <div class="space-y-3">
                     <div>
                         <label class="block text-xs font-bold text-slate-300 mb-1">Fecha inicio</label>
@@ -871,7 +877,8 @@
                     <textarea id="objNotasGenerales" rows="2" class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm" placeholder="Comentarios de la semana..."></textarea>
                 </div>
 
-                <div class="border border-regio rounded-lg p-3 bg-slate-900/50">
+                <!-- Sección objetivo por CLIENTES -->
+                <div id="objSeccionClientes" class="border border-regio rounded-lg p-3 bg-slate-900/50">
                     <div class="flex justify-between items-center mb-2">
                         <label class="text-xs font-bold text-amber-400"><i class="fa-solid fa-users mr-1"></i> Clientes del objetivo</label>
                         <button type="button" onclick="agregarFilaClienteObj()" class="text-xs bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 px-2 py-1 rounded">
@@ -879,7 +886,27 @@
                         </button>
                     </div>
                     <div id="objClientesFilas" class="space-y-3"></div>
-                    <p class="text-[10px] text-slate-500 mt-2">Puedes agregar varios clientes. Cada uno con su combustible, cargas Full/Sencillo y estatus.</p>
+                    <p class="text-[10px] text-slate-500 mt-2">Varios clientes, cada uno con combustible, cargas Full/Sencillo y estatus.</p>
+                </div>
+
+                <!-- Sección objetivo por LITROS -->
+                <div id="objSeccionLitros" class="hidden border border-regio rounded-lg p-3 bg-slate-900/50 space-y-3">
+                    <label class="text-xs font-bold text-cyan-400"><i class="fa-solid fa-droplet mr-1"></i> Meta de litros por combustible</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-[10px] text-amber-400/90 mb-1">Diésel (Lts)</label>
+                            <input type="number" id="objLtsDiesel" min="0" step="1" value="0" class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm" placeholder="0">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-cyan-400/90 mb-1">Gasolina Regular (Lts)</label>
+                            <input type="number" id="objLtsRegular" min="0" step="1" value="0" class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm" placeholder="0">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-emerald-400/90 mb-1">Gasolina Premium (Lts)</label>
+                            <input type="number" id="objLtsPremium" min="0" step="1" value="0" class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm" placeholder="0">
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-slate-500">El avance se calcula con las ventas del periodo según estatus de entrega (Entregada 100%, Tránsito 50%, Detenida/Contratiempo 25%).</p>
                 </div>
 
                 <div class="flex justify-end space-x-2 pt-2 border-t border-regio">
@@ -2153,6 +2180,9 @@
 
         function pctCumplimientoObjetivo(raw) {
             const o = (typeof normalizarObjetivo === 'function') ? normalizarObjetivo(raw) : raw;
+            if (o.tipo === 'litros') {
+                return avanceObjetivoLitros(o).pct;
+            }
             let meta = 0, vend = 0;
             (o.items || []).forEach(item => {
                 const m = item.litrosObjetivo || ((item.numero || 1) * (item.tipoCarga === 'Full' ? 60000 : 30000));
@@ -2193,8 +2223,16 @@
                 const key = o.idDoc || o.id || String(i);
                 const opt = document.createElement('option');
                 opt.value = key;
-                const nCli = (o.items && o.items.length) ? o.items.length : (o.cliente ? 1 : 0);
-                opt.textContent = labelObjetivo(o) + ' (' + nCli + ' cliente' + (nCli !== 1 ? 's' : '') + ')';
+                const tipoO = o.tipo === 'litros' ? 'litros' : 'clientes';
+                let extra = '';
+                if (tipoO === 'litros') {
+                    const m = o.metasLitros || {};
+                    extra = ' litros';
+                } else {
+                    const nCli = (o.items && o.items.length) ? o.items.length : (o.cliente ? 1 : 0);
+                    extra = ' ' + nCli + ' cliente' + (nCli !== 1 ? 's' : '');
+                }
+                opt.textContent = labelObjetivo(o) + ' (' + tipoO + extra + ')';
                 if (prev.includes(key) || (prev.length === 0 && i < 3)) opt.selected = true;
                 sel.appendChild(opt);
             });
@@ -2556,11 +2594,29 @@
         }
 
         function normalizarObjetivo(o) {
+            if (!o) return { tipo: 'clientes', items: [], notasGenerales: '', metasLitros: { diesel: 0, regular: 0, premium: 0 } };
+            // Objetivo por litros
+            if (o.tipo === 'litros' || (o.metasLitros && !o.items)) {
+                return {
+                    ...o,
+                    tipo: 'litros',
+                    items: [],
+                    notasGenerales: o.notasGenerales || '',
+                    metasLitros: {
+                        diesel: Number(o.metasLitros?.diesel) || 0,
+                        regular: Number(o.metasLitros?.regular) || 0,
+                        premium: Number(o.metasLitros?.premium) || 0
+                    }
+                };
+            }
             // Compatibilidad con objetivos antiguos (un solo cliente)
-            if (o.items && Array.isArray(o.items)) return o;
+            if (o.items && Array.isArray(o.items)) {
+                return { ...o, tipo: o.tipo || 'clientes', notasGenerales: o.notasGenerales || '' };
+            }
             if (o.cliente) {
                 return {
                     ...o,
+                    tipo: 'clientes',
                     items: [{
                         cliente: o.cliente,
                         producto: o.producto || 'Diésel',
@@ -2573,7 +2629,43 @@
                     notasGenerales: o.notasGenerales || ''
                 };
             }
-            return { ...o, items: o.items || [], notasGenerales: o.notasGenerales || '' };
+            return { ...o, tipo: o.tipo || 'clientes', items: o.items || [], notasGenerales: o.notasGenerales || '' };
+        }
+
+        function productoEs(prod, tipo) {
+            const p = prod || '';
+            if (tipo === 'diesel') return p === 'Diésel';
+            if (tipo === 'premium') return p === 'Gasolina Premium';
+            if (tipo === 'regular') return p === 'Gasolina Regular' || p === 'Gasolina';
+            return false;
+        }
+
+        function litrosEfectivosPorProducto(fechaInicio, fechaFin, tipoProd) {
+            return (window.ventas || []).filter(v => {
+                const f = v.fecha || '';
+                if (f < fechaInicio || f > fechaFin) return false;
+                return productoEs(v.producto, tipoProd);
+            }).reduce((acc, v) => {
+                return acc + (parseFloat(v.litros) || 0) * factorAvanceEstatus(v.estatus);
+            }, 0);
+        }
+
+        function avanceObjetivoLitros(o) {
+            const m = o.metasLitros || { diesel: 0, regular: 0, premium: 0 };
+            const ed = litrosEfectivosPorProducto(o.fechaInicio, o.fechaFin, 'diesel');
+            const er = litrosEfectivosPorProducto(o.fechaInicio, o.fechaFin, 'regular');
+            const ep = litrosEfectivosPorProducto(o.fechaInicio, o.fechaFin, 'premium');
+            const meta = (m.diesel || 0) + (m.regular || 0) + (m.premium || 0);
+            const efect = ed + er + ep;
+            const pct = meta > 0 ? Math.min(100, Math.round(efect / meta * 100)) : 0;
+            return {
+                diesel: { meta: m.diesel || 0, efect: ed, pct: (m.diesel || 0) > 0 ? Math.min(100, Math.round(ed / m.diesel * 100)) : 0 },
+                regular: { meta: m.regular || 0, efect: er, pct: (m.regular || 0) > 0 ? Math.min(100, Math.round(er / m.regular * 100)) : 0 },
+                premium: { meta: m.premium || 0, efect: ep, pct: (m.premium || 0) > 0 ? Math.min(100, Math.round(ep / m.premium * 100)) : 0 },
+                metaTotal: meta,
+                efectTotal: efect,
+                pct
+            };
         }
 
         // Avance según estatus de entrega:
@@ -2736,7 +2828,7 @@
 
             const lista = (window.objetivos || []).slice().sort((a, b) => (b.fechaInicio || '').localeCompare(a.fechaInicio || ''));
             if (!lista.length) {
-                cont.innerHTML = `<div class="bg-regio-card border border-regio rounded-xl p-8 text-center text-slate-500">No hay objetivos semanales. El administrador puede crear uno nuevo.</div>`;
+                cont.innerHTML = `<div class="bg-regio-card border border-regio rounded-xl p-8 text-center text-slate-500">No hay objetivos. Usa «Objetivo por clientes» o «Objetivo por litros».</div>`;
                 return;
             }
 
@@ -2746,7 +2838,94 @@
                     (item.idDoc && item.idDoc === raw.idDoc) || (item.id === raw.id)
                 );
                 const chartId = 'chartObj_' + (raw.idDoc || raw.id || realIdx);
+                const adminBtns = isAdmin ? `
+                    <button onclick="editarObjetivo(${realIdx})" class="px-2 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 rounded border border-regio"><i class="fa-solid fa-pen mr-1"></i>Editar</button>
+                    <button onclick="eliminarObjetivo(${realIdx})" class="px-2 py-1 text-xs bg-slate-800 hover:bg-red-900/40 text-red-300 rounded border border-regio"><i class="fa-solid fa-trash mr-1"></i>Eliminar</button>
+                ` : '';
 
+                // ===== OBJETIVO POR LITROS =====
+                if (o.tipo === 'litros') {
+                    const av = avanceObjetivoLitros(o);
+                    cont.innerHTML += `
+                    <div class="bg-regio-card border border-cyan-500/40 rounded-xl overflow-hidden shadow-lg">
+                        <div class="p-4 sm:p-5 border-b border-regio flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                            <div>
+                                <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300">Por litros</span>
+                                <h3 class="text-base sm:text-lg font-bold text-white mt-1"><i class="fa-solid fa-droplet text-cyan-400 mr-2"></i>${o.fechaInicio || '?'} → ${o.fechaFin || '?'}</h3>
+                                <p class="text-xs text-slate-400 mt-0.5">Avance global <b class="text-cyan-400">${av.pct}%</b> · ${Math.round(av.efectTotal).toLocaleString('es-MX')} / ${av.metaTotal.toLocaleString('es-MX')} Lts efectivos</p>
+                                ${o.notasGenerales ? `<p class="text-xs text-slate-300 mt-1 italic">${o.notasGenerales}</p>` : ''}
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <button onclick="exportarObjetivoPDF(${realIdx})" class="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white font-bold rounded"><i class="fa-solid fa-file-pdf mr-1"></i> Exportar PDF</button>
+                                ${adminBtns}
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-0">
+                            <div class="lg:col-span-2 p-3 overflow-x-auto">
+                                <table class="w-full text-left text-xs">
+                                    <thead class="text-[10px] uppercase text-slate-400 bg-slate-900/80">
+                                        <tr><th class="p-2">Combustible</th><th class="p-2">Meta Lts</th><th class="p-2">Efectivos*</th><th class="p-2">Avance</th></tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-regio">
+                                        <tr>
+                                            <td class="p-2 font-semibold text-amber-400">Diésel</td>
+                                            <td class="p-2">${av.diesel.meta.toLocaleString('es-MX')}</td>
+                                            <td class="p-2 text-cyan-300">${Math.round(av.diesel.efect).toLocaleString('es-MX')}</td>
+                                            <td class="p-2"><div class="w-full bg-slate-800 rounded h-2 mb-1"><div class="h-2 rounded ${av.diesel.pct>=100?'bg-emerald-500':'bg-amber-500'}" style="width:${av.diesel.pct}%"></div></div><span class="text-[9px] text-slate-400">${av.diesel.pct}%</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="p-2 font-semibold text-cyan-400">Gasolina Regular</td>
+                                            <td class="p-2">${av.regular.meta.toLocaleString('es-MX')}</td>
+                                            <td class="p-2 text-cyan-300">${Math.round(av.regular.efect).toLocaleString('es-MX')}</td>
+                                            <td class="p-2"><div class="w-full bg-slate-800 rounded h-2 mb-1"><div class="h-2 rounded ${av.regular.pct>=100?'bg-emerald-500':'bg-amber-500'}" style="width:${av.regular.pct}%"></div></div><span class="text-[9px] text-slate-400">${av.regular.pct}%</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="p-2 font-semibold text-emerald-400">Gasolina Premium</td>
+                                            <td class="p-2">${av.premium.meta.toLocaleString('es-MX')}</td>
+                                            <td class="p-2 text-cyan-300">${Math.round(av.premium.efect).toLocaleString('es-MX')}</td>
+                                            <td class="p-2"><div class="w-full bg-slate-800 rounded h-2 mb-1"><div class="h-2 rounded ${av.premium.pct>=100?'bg-emerald-500':'bg-amber-500'}" style="width:${av.premium.pct}%"></div></div><span class="text-[9px] text-slate-400">${av.premium.pct}%</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="p-4 border-t lg:border-t-0 lg:border-l border-regio">
+                                <p class="text-xs font-bold text-slate-300 mb-2 text-center">Avance por combustible (%)</p>
+                                <div class="relative h-56 w-full"><canvas id="${chartId}"></canvas></div>
+                            </div>
+                        </div>
+                    </div>`;
+                    setTimeout(() => {
+                        const canvas = document.getElementById(chartId);
+                        if (!canvas || typeof Chart === 'undefined') return;
+                        if (window.objChartInstances[chartId]) { try { window.objChartInstances[chartId].destroy(); } catch(e) {} }
+                        window.objChartInstances[chartId] = new Chart(canvas.getContext('2d'), {
+                            type: 'bar',
+                            data: {
+                                labels: [['Diésel'], ['Gasolina', 'Regular'], ['Gasolina', 'Premium']],
+                                datasets: [{
+                                    label: '% avance',
+                                    data: [av.diesel.pct, av.regular.pct, av.premium.pct],
+                                    backgroundColor: ['rgba(245,158,11,0.85)', 'rgba(6,182,212,0.85)', 'rgba(16,185,129,0.85)'],
+                                    borderWidth: 0,
+                                    borderRadius: 4
+                                }]
+                            },
+                            options: {
+                                indexAxis: 'y',
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: { legend: { display: false } },
+                                scales: {
+                                    x: { min: 0, max: 100, ticks: { color: '#94a3b8', callback: v => v + '%' }, grid: { color: '#1e3a5f' } },
+                                    y: { ticks: { color: '#e2e8f0', font: { size: 10, weight: 'bold' } }, grid: { display: false } }
+                                }
+                            }
+                        });
+                    }, 50);
+                    return; // next objetivo
+                }
+
+                // ===== OBJETIVO POR CLIENTES (existente) =====
                 let totalMeta = 0, totalVend = 0, cumplidos = 0;
                 const rows = (o.items || []).map((item, itemIdx) => {
                     const meta = item.litrosObjetivo || ((item.numero || 1) * litrosPorCarga(item.tipoCarga || 'Sencillo'));
@@ -2787,16 +2966,13 @@
                 }).join('');
 
                 const pctGlobal = totalMeta > 0 ? Math.min(100, Math.round(totalVend / totalMeta * 100)) : 0;
-                const adminBtns = isAdmin ? `
-                    <button onclick="editarObjetivo(${realIdx})" class="px-2 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 rounded border border-regio"><i class="fa-solid fa-pen mr-1"></i>Editar</button>
-                    <button onclick="eliminarObjetivo(${realIdx})" class="px-2 py-1 text-xs bg-slate-800 hover:bg-red-900/40 text-red-300 rounded border border-regio"><i class="fa-solid fa-trash mr-1"></i>Eliminar</button>
-                ` : '';
 
                 cont.innerHTML += `
                 <div class="bg-regio-card border border-regio rounded-xl overflow-hidden shadow-lg">
                     <div class="p-4 sm:p-5 border-b border-regio flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                         <div>
-                            <h3 class="text-base sm:text-lg font-bold text-white"><i class="fa-solid fa-calendar-week text-amber-500 mr-2"></i>${o.fechaInicio || '?'} → ${o.fechaFin || '?'}</h3>
+                            <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-amber-500/20 text-amber-300">Por clientes</span>
+                            <h3 class="text-base sm:text-lg font-bold text-white mt-1"><i class="fa-solid fa-calendar-week text-amber-500 mr-2"></i>${o.fechaInicio || '?'} → ${o.fechaFin || '?'}</h3>
                             <p class="text-xs text-slate-400 mt-0.5">${(o.items||[]).length} cliente(s) · Avance global <b class="text-amber-400">${pctGlobal}%</b> · Cumplidos ${cumplidos}/${(o.items||[]).length}</p>
                             ${o.notasGenerales ? `<p class="text-xs text-slate-300 mt-1 italic">${o.notasGenerales}</p>` : ''}
                         </div>
@@ -2970,17 +3146,26 @@
         }
 
 
-                window.openModalObjetivo = function openModalObjetivo() {
+                window.openModalObjetivo = function openModalObjetivo(tipo) {
             if (!window.currentUser || window.currentUser.rol !== 'Admin') {
                 alert('Solo el administrador puede crear objetivos.');
                 return;
             }
-            document.getElementById('modalObjetivoTitulo').innerText = 'Nuevo Objetivo Semanal';
+            tipo = tipo === 'litros' ? 'litros' : 'clientes';
+            document.getElementById('objTipo').value = tipo;
+            document.getElementById('modalObjetivoTitulo').innerText = tipo === 'litros' ? 'Nuevo Objetivo por Litros' : 'Nuevo Objetivo por Clientes';
             document.getElementById('objEditIndex').value = '';
             document.getElementById('objNotasGenerales').value = '';
             document.getElementById('objClientesFilas').innerHTML = '';
+            document.getElementById('objLtsDiesel').value = '0';
+            document.getElementById('objLtsRegular').value = '0';
+            document.getElementById('objLtsPremium').value = '0';
             initSelectsFechaObjetivo();
-            agregarFilaClienteObj();
+            const secC = document.getElementById('objSeccionClientes');
+            const secL = document.getElementById('objSeccionLitros');
+            if (secC) secC.classList.toggle('hidden', tipo === 'litros');
+            if (secL) secL.classList.toggle('hidden', tipo !== 'litros');
+            if (tipo === 'clientes') agregarFilaClienteObj();
             document.getElementById('modalObjetivo').classList.remove('hidden');
         }
 
@@ -2989,15 +3174,28 @@
             const raw = window.objetivos[idx];
             if (!raw) return;
             const o = normalizarObjetivo(raw);
-            document.getElementById('modalObjetivoTitulo').innerText = 'Editar Objetivo Semanal';
+            const tipo = o.tipo === 'litros' ? 'litros' : 'clientes';
+            document.getElementById('objTipo').value = tipo;
+            document.getElementById('modalObjetivoTitulo').innerText = tipo === 'litros' ? 'Editar Objetivo por Litros' : 'Editar Objetivo por Clientes';
             document.getElementById('objEditIndex').value = idx;
             document.getElementById('objNotasGenerales').value = o.notasGenerales || '';
             document.getElementById('objClientesFilas').innerHTML = '';
             initSelectsFechaObjetivo();
             setFechaObjSelects('objIni', o.fechaInicio || '2026-01-01');
             setFechaObjSelects('objFin', o.fechaFin || '2026-01-01');
-            (o.items || []).forEach(it => agregarFilaClienteObj(it));
-            if (!(o.items || []).length) agregarFilaClienteObj();
+            const secC = document.getElementById('objSeccionClientes');
+            const secL = document.getElementById('objSeccionLitros');
+            if (secC) secC.classList.toggle('hidden', tipo === 'litros');
+            if (secL) secL.classList.toggle('hidden', tipo !== 'litros');
+            if (tipo === 'litros') {
+                const m = o.metasLitros || {};
+                document.getElementById('objLtsDiesel').value = m.diesel || 0;
+                document.getElementById('objLtsRegular').value = m.regular || 0;
+                document.getElementById('objLtsPremium').value = m.premium || 0;
+            } else {
+                (o.items || []).forEach(it => agregarFilaClienteObj(it));
+                if (!(o.items || []).length) agregarFilaClienteObj();
+            }
             document.getElementById('modalObjetivo').classList.remove('hidden');
         }
 
@@ -3015,7 +3213,7 @@
                 const fechaInicio = armarFechaObj('objIni');
                 const fechaFin = armarFechaObj('objFin');
                 const notasGenerales = (document.getElementById('objNotasGenerales').value || '').trim();
-                const items = typeof leerFilasClientesObj === 'function' ? leerFilasClientesObj() : [];
+                const tipo = document.getElementById('objTipo')?.value === 'litros' ? 'litros' : 'clientes';
 
                 if (!fechaInicio || !fechaFin) {
                     alert('Selecciona día, mes y año de inicio y fin.');
@@ -3025,12 +3223,27 @@
                     alert('La fecha fin debe ser igual o posterior a la fecha inicio.');
                     return;
                 }
-                if (!items.length) {
-                    alert('Agrega al menos un cliente al objetivo (elige un cliente de la lista).');
-                    return;
-                }
 
-                const datos = { fechaInicio, fechaFin, notasGenerales, items };
+                let datos;
+                if (tipo === 'litros') {
+                    const metasLitros = {
+                        diesel: Math.max(0, parseFloat(document.getElementById('objLtsDiesel').value) || 0),
+                        regular: Math.max(0, parseFloat(document.getElementById('objLtsRegular').value) || 0),
+                        premium: Math.max(0, parseFloat(document.getElementById('objLtsPremium').value) || 0)
+                    };
+                    if (metasLitros.diesel + metasLitros.regular + metasLitros.premium <= 0) {
+                        alert('Indica al menos una meta de litros mayor a 0.');
+                        return;
+                    }
+                    datos = { tipo: 'litros', fechaInicio, fechaFin, notasGenerales, metasLitros, items: [] };
+                } else {
+                    const items = typeof leerFilasClientesObj === 'function' ? leerFilasClientesObj() : [];
+                    if (!items.length) {
+                        alert('Agrega al menos un cliente al objetivo (elige un cliente de la lista).');
+                        return;
+                    }
+                    datos = { tipo: 'clientes', fechaInicio, fechaFin, notasGenerales, items };
+                }
                 const addDocFn = window.addDoc;
                 const updateDocFn = window.updateDoc;
                 const collectionFn = window.collection;
@@ -3163,6 +3376,28 @@
             const raw = window.objetivos[idx];
             if (!raw) return;
             const o = normalizarObjetivo(raw);
+
+            if (o.tipo === 'litros') {
+                const av = avanceObjetivoLitros(o);
+                const w = window.open('', '_blank');
+                w.document.write(`<!DOCTYPE html><html><head><title>Objetivo litros ${o.fechaInicio}</title>
+                <style>body{font-family:Arial;padding:24px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #ccc;padding:8px}th{background:#0b1e36;color:#fff}@media print{button{display:none}}</style></head><body>
+                <button onclick="window.print()" style="padding:8px 16px;background:#dc2626;color:#fff;border:none;border-radius:4px;font-weight:bold;margin-bottom:12px">Imprimir / Guardar PDF</button>
+                <h1>REGIO FUEL — Objetivo por Litros</h1>
+                <p>Periodo: ${o.fechaInicio} → ${o.fechaFin}</p>
+                <p>Avance global: <b>${av.pct}%</b> (${Math.round(av.efectTotal).toLocaleString('es-MX')} / ${av.metaTotal.toLocaleString('es-MX')} Lts efectivos)</p>
+                <table><thead><tr><th>Combustible</th><th>Meta Lts</th><th>Efectivos</th><th>Avance</th></tr></thead>
+                <tbody>
+                <tr><td>Diésel</td><td>${av.diesel.meta.toLocaleString('es-MX')}</td><td>${Math.round(av.diesel.efect).toLocaleString('es-MX')}</td><td>${av.diesel.pct}%</td></tr>
+                <tr><td>Gasolina Regular</td><td>${av.regular.meta.toLocaleString('es-MX')}</td><td>${Math.round(av.regular.efect).toLocaleString('es-MX')}</td><td>${av.regular.pct}%</td></tr>
+                <tr><td>Gasolina Premium</td><td>${av.premium.meta.toLocaleString('es-MX')}</td><td>${Math.round(av.premium.efect).toLocaleString('es-MX')}</td><td>${av.premium.pct}%</td></tr>
+                </tbody></table>
+                <p style="font-size:11px;color:#888;margin-top:16px">* Efectivos: Entregada 100%, En Tránsito 50%, Detenida/Contratiempo 25%</p>
+                <script>setTimeout(function(){window.print()},400);<\/script></body></html>`);
+                w.document.close();
+                return;
+            }
+
             let totalMeta = 0, totalVend = 0;
             let rowsHtml = '';
             (o.items || []).forEach(item => {
