@@ -694,6 +694,11 @@
                     <label class="block text-xs font-bold text-slate-300 mb-1">Cliente</label>
                     <select id="vtaCliente" required class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm"></select>
                 </div>
+                <div id="vtaVendedorWrap">
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Vendedor / Agente</label>
+                    <select id="vtaVendedor" class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm"></select>
+                    <p id="vtaVendedorHint" class="text-[10px] text-slate-500 mt-1 hidden">Como agente, la venta se registra a tu nombre.</p>
+                </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-300 mb-1">Producto</label>
                     <select id="vtaProducto" onchange="autoCargarPrecioReferencia()" required class="w-full bg-slate-900 border border-regio rounded px-3 py-2 text-white text-xs sm:text-sm">
@@ -793,6 +798,12 @@
     </div>
 
 
+    <datalist id="listaCargas1a9">
+        <option value="1"></option><option value="2"></option><option value="3"></option>
+        <option value="4"></option><option value="5"></option><option value="6"></option>
+        <option value="7"></option><option value="8"></option><option value="9"></option>
+    </datalist>
+
     <!-- MODAL OBJETIVO SEMANAL (varios clientes) -->
     <div id="modalObjetivo" class="fixed inset-0 bg-black/70 hidden z-50 flex items-center justify-center p-4">
         <div class="bg-regio-card border border-regio rounded-xl p-5 sm:p-6 max-w-2xl w-full max-h-[92vh] overflow-y-auto">
@@ -886,7 +897,7 @@
                         </button>
                     </div>
                     <div id="objClientesFilas" class="space-y-3"></div>
-                    <p class="text-[10px] text-slate-500 mt-2">Varios clientes, cada uno con combustible, cargas Full/Sencillo y estatus.</p>
+                    <p class="text-[10px] text-slate-500 mt-2">Varios clientes, cada uno con combustible, cargas (Sencillo/Patona/Full) y estatus.</p>
                 </div>
 
                 <!-- Sección objetivo por LITROS -->
@@ -1300,6 +1311,10 @@
                     total: tot,
                     obs: obs
                 };
+                if (window.currentUser.rol === 'Admin') {
+                    const selV = document.getElementById('vtaVendedor');
+                    if (selV && selV.value) datos.vendedor = selV.value;
+                }
                 if (window.dataMode === 'firebase' && window.db && target.idDoc) {
                     await updateDoc(doc(window.db, "ventas", target.idDoc), datos);
                 } else {
@@ -1312,11 +1327,16 @@
             } else {
                 // NUEVA venta
                 const obs = (document.getElementById('vtaObs')?.value || '').trim() || 'Orden registrada';
+                let nombreVendedor = window.currentUser.nombre;
+                if (window.currentUser.rol === 'Admin') {
+                    const selV = document.getElementById('vtaVendedor');
+                    if (selV && selV.value) nombreVendedor = selV.value;
+                }
                 const nueva = {
                     id: 'RF-VTA-' + (1000 + window.ventas.length + 1),
                     fecha: new Date().toISOString().split('T')[0],
                     cliente: cli,
-                    vendedor: window.currentUser.nombre,
+                    vendedor: nombreVendedor,
                     producto: prod,
                     litros: lts,
                     precio: precio,
@@ -2185,7 +2205,7 @@
             }
             let meta = 0, vend = 0;
             (o.items || []).forEach(item => {
-                const m = item.litrosObjetivo || ((item.numero || 1) * (item.tipoCarga === 'Full' ? 60000 : 30000));
+                const m = item.litrosObjetivo || ((item.numero || 1) * litrosPorCarga(item.tipoCarga || 'Sencillo'));
                 meta += m;
                 if (typeof litrosVendidosItem === 'function') vend += litrosVendidosItem(o, item);
                 else {
@@ -2199,7 +2219,7 @@
             });
             // legacy single-client
             if (!(o.items || []).length && o.cliente) {
-                const m = o.litrosObjetivo || ((o.numero || 1) * (o.tipoCarga === 'Full' ? 60000 : 30000));
+                const m = o.litrosObjetivo || ((o.numero || 1) * litrosPorCarga(o.tipoCarga || 'Sencillo'));
                 meta = m;
                 const ini = o.fechaInicio, fin = o.fechaFin;
                 vend = (window.ventas || []).filter(v =>
@@ -2355,6 +2375,42 @@
             return 'bg-red-500/20 text-red-400';
         }
 
+
+        function poblarSelectVendedorVenta(selectedNombre) {
+            const sel = document.getElementById('vtaVendedor');
+            const hint = document.getElementById('vtaVendedorHint');
+            if (!sel || !window.currentUser) return;
+            sel.innerHTML = '';
+            const isAdmin = window.currentUser.rol === 'Admin';
+            if (isAdmin) {
+                // Admin: todos los usuarios (Admin y Agente)
+                const lista = (window.usuarios || []).slice().sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+                if (!lista.length) {
+                    sel.innerHTML = `<option value="${window.currentUser.nombre}">${window.currentUser.nombre}</option>`;
+                } else {
+                    lista.forEach(u => {
+                        const opt = document.createElement('option');
+                        opt.value = u.nombre;
+                        opt.textContent = u.nombre + (u.rol === 'Admin' ? ' (Admin)' : ' (Agente)');
+                        if (selectedNombre ? u.nombre === selectedNombre : u.nombre === window.currentUser.nombre) {
+                            opt.selected = true;
+                        }
+                        sel.appendChild(opt);
+                    });
+                }
+                sel.disabled = false;
+                sel.classList.remove('opacity-60');
+                if (hint) hint.classList.add('hidden');
+            } else {
+                // Agente: solo su nombre, no puede elegir otro
+                sel.innerHTML = `<option value="${window.currentUser.nombre}">${window.currentUser.nombre}</option>`;
+                sel.value = window.currentUser.nombre;
+                sel.disabled = true;
+                sel.classList.add('opacity-60');
+                if (hint) hint.classList.remove('hidden');
+            }
+        }
+
         function openModalVenta() {
             document.getElementById('modalVentaTitulo').innerText = 'Registrar Venta';
             document.getElementById('vtaEditIndex').value = '';
@@ -2363,9 +2419,11 @@
             window.clientes.forEach(c => {
                 sel.innerHTML += `<option value="${c.nombre}">${c.nombre}</option>`;
             });
+            poblarSelectVendedorVenta(window.currentUser.nombre);
             document.getElementById('vtaLitros').value = '';
             document.getElementById('vtaTotal').value = '';
-            document.getElementById('vtaObs').value = '';
+            const obs = document.getElementById('vtaObs');
+            if (obs) obs.value = '';
             autoCargarPrecioReferencia();
             document.getElementById('modalVenta').classList.remove('hidden');
         }
@@ -2381,14 +2439,15 @@
             window.clientes.forEach(c => {
                 sel.innerHTML += `<option value="${c.nombre}" ${c.nombre === v.cliente ? 'selected' : ''}>${c.nombre}</option>`;
             });
-            // Si el cliente ya no está en el catálogo, agregarlo temporalmente
             if (v.cliente && !window.clientes.find(c => c.nombre === v.cliente)) {
                 sel.innerHTML += `<option value="${v.cliente}" selected>${v.cliente}</option>`;
             }
+            poblarSelectVendedorVenta(v.vendedor || window.currentUser.nombre);
             document.getElementById('vtaProducto').value = v.producto || 'Diésel';
             document.getElementById('vtaLitros').value = v.litros || '';
             document.getElementById('vtaPrecio').value = v.precio || '';
-            document.getElementById('vtaObs').value = v.obs || '';
+            const obs = document.getElementById('vtaObs');
+            if (obs) obs.value = v.obs || '';
             calcTotalVenta();
             document.getElementById('modalVenta').classList.remove('hidden');
         }
@@ -2590,7 +2649,9 @@
         window._objFilaCounter = 0;
 
         function litrosPorCarga(tipo) {
-            return tipo === 'Full' ? 60000 : 30000;
+            if (tipo === 'Full') return 60000;
+            if (tipo === 'Patona') return 55000;
+            return 30000; // Sencillo
         }
 
         function normalizarObjetivo(o) {
@@ -2747,14 +2808,15 @@
                         </select>
                     </div>
                     <div>
-                        <label class="text-[10px] text-slate-400">Cargas (1-99)</label>
-                        <input type="number" min="1" max="99" value="${n}" class="obj-num w-full bg-slate-800 border border-regio rounded px-2 py-1.5 text-white text-xs" oninput="recalcFilaMeta('${id}')">
+                        <label class="text-[10px] text-slate-400">Nº de cargas</label>
+                        <input type="number" min="1" step="1" value="${n}" list="listaCargas1a9" class="obj-num w-full bg-slate-800 border border-regio rounded px-2 py-1.5 text-white text-xs" oninput="recalcFilaMeta('${id}')" placeholder="1">
                     </div>
                     <div>
                         <label class="text-[10px] text-slate-400">Tipo</label>
                         <select class="obj-tipo w-full bg-slate-800 border border-regio rounded px-2 py-1.5 text-white text-xs" onchange="recalcFilaMeta('${id}')">
-                            <option value="Sencillo" ${tipo==='Sencillo'?'selected':''}>Sencillo 30k</option>
-                            <option value="Full" ${tipo==='Full'?'selected':''}>Full 60k</option>
+                            <option value="Sencillo" ${tipo==='Sencillo'?'selected':''}>Sencillo (30,000 Lts)</option>
+                            <option value="Patona" ${tipo==='Patona'?'selected':''}>Patona (55,000 Lts)</option>
+                            <option value="Full" ${tipo==='Full'?'selected':''}>Full (60,000 Lts)</option>
                         </select>
                     </div>
                     <div>
@@ -2783,9 +2845,11 @@
         function recalcFilaMeta(filaId) {
             const fila = document.getElementById(filaId);
             if (!fila) return;
-            const n = Math.min(99, Math.max(1, parseInt(fila.querySelector('.obj-num').value, 10) || 1));
+            let n = parseFloat(fila.querySelector('.obj-num').value);
+            if (isNaN(n) || n < 1) n = 1;
+            n = Math.floor(n);
             const tipo = fila.querySelector('.obj-tipo').value;
-            fila.querySelector('.obj-num').value = n;
+            // no forzar el valor mientras escribe; solo al calcular meta
             fila.querySelector('.obj-meta').value = (n * litrosPorCarga(tipo)).toLocaleString('es-MX') + ' Lts';
         }
 
@@ -2795,8 +2859,9 @@
             filas.forEach(fila => {
                 const cliente = fila.querySelector('.obj-cli').value;
                 if (!cliente) return;
-                let numero = parseInt(fila.querySelector('.obj-num').value, 10) || 1;
-                numero = Math.min(99, Math.max(1, numero));
+                let numero = parseFloat(fila.querySelector('.obj-num').value);
+                if (isNaN(numero) || numero < 1) numero = 1;
+                numero = Math.floor(numero);
                 const tipoCarga = fila.querySelector('.obj-tipo').value;
                 items.push({
                     cliente,
