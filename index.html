@@ -3069,7 +3069,7 @@
                         </div>
                         <div class="p-4 border-t lg:border-t-0 lg:border-l border-regio">
                             <p class="text-xs font-bold text-slate-300 mb-2 text-center">Avance por cliente (%)</p>
-                            <div class="relative h-56 w-full">
+                            <div class="relative w-full" style="height:${Math.max(220, ((o.items||[]).length || 1) * 42 + 48)}px;">
                                 <canvas id="${chartId}"></canvas>
                             </div>
                             <p class="text-[10px] text-center text-slate-500 mt-2">${totalVend.toLocaleString('es-MX')} / ${totalMeta.toLocaleString('es-MX')} Lts</p>
@@ -3081,13 +3081,26 @@
                 setTimeout(() => {
                     const canvas = document.getElementById(chartId);
                     if (!canvas || typeof Chart === 'undefined') return;
-                    const labels = (o.items || []).map(it => it.cliente);
-                    const dataPct = (o.items || []).map(it => {
+                    const itemsList = o.items || [];
+                    // Etiquetas cortas en 1 línea para alinear 1:1 con cada barra
+                    const labels = itemsList.map(it => {
+                        const nom = (it.cliente || '-').trim();
+                        return nom.length > 22 ? nom.slice(0, 20) + '…' : nom;
+                    });
+                    const labelsFull = itemsList.map(it => it.cliente || '-');
+                    const dataPct = itemsList.map(it => {
                         const meta = it.litrosObjetivo || ((it.numero || 1) * litrosPorCarga(it.tipoCarga || 'Sencillo'));
                         const vend = litrosVendidosItem(o, it);
                         return meta > 0 ? Math.min(100, Math.round(vend / meta * 100)) : 0;
                     });
-                    const colors = dataPct.map(p => p >= 100 ? 'rgba(16, 185, 129, 0.8)' : p >= 50 ? 'rgba(245, 158, 11, 0.8)' : 'rgba(59, 130, 246, 0.75)');
+                    // Colores degradados por nivel de avance
+                    const colors = dataPct.map(p => {
+                        if (p >= 100) return '#10b981';      // verde
+                        if (p >= 75) return '#34d399';
+                        if (p >= 50) return '#f59e0b';       // ámbar
+                        if (p >= 25) return '#fb923c';       // naranja
+                        return '#38bdf8';                    // cielo
+                    });
                     if (window.objChartInstances[chartId]) {
                         try { window.objChartInstances[chartId].destroy(); } catch(e) {}
                     }
@@ -3098,30 +3111,51 @@
                             datasets: [{
                                 label: '% cumplimiento',
                                 data: dataPct.length ? dataPct : [0],
-                                backgroundColor: colors.length ? colors : ['#64748b'],
-                                borderWidth: 0
+                                backgroundColor: colors.length ? colors : ['#38bdf8'],
+                                borderWidth: 0,
+                                borderRadius: 8,
+                                borderSkipped: false,
+                                barPercentage: 0.35,
+                                categoryPercentage: 0.65
                             }]
                         },
                         options: {
                             indexAxis: 'y',
                             responsive: true,
                             maintainAspectRatio: false,
+                            layout: { padding: { left: 4, right: 12, top: 6, bottom: 6 } },
                             plugins: {
                                 legend: { display: false },
                                 tooltip: {
                                     callbacks: {
-                                        label: (ctx) => ctx.parsed.x + '% de la meta'
+                                        title: (items) => {
+                                            const i = items[0] && items[0].dataIndex;
+                                            return labelsFull[i] != null ? labelsFull[i] : (items[0] && items[0].label);
+                                        },
+                                        label: (ctx) => (ctx.parsed.x != null ? ctx.parsed.x : 0) + '% de la meta'
                                     }
                                 }
                             },
                             scales: {
                                 x: {
                                     min: 0, max: 100,
-                                    ticks: { color: '#94a3b8', callback: v => v + '%' },
-                                    grid: { color: '#1e3a5f' }
+                                    ticks: {
+                                        color: '#94a3b8',
+                                        font: { size: 9 },
+                                        stepSize: 25,
+                                        callback: v => v + '%'
+                                    },
+                                    grid: { color: 'rgba(30, 58, 95, 0.6)' }
                                 },
                                 y: {
-                                    ticks: { color: '#cbd5e1', font: { size: 10 } },
+                                    ticks: {
+                                        color: '#e2e8f0',
+                                        font: { size: 9, weight: '600' },
+                                        autoSkip: false,
+                                        maxRotation: 0,
+                                        minRotation: 0,
+                                        crossAlign: 'far'
+                                    },
                                     grid: { display: false }
                                 }
                             }
@@ -3437,6 +3471,103 @@
         window.renderObjetivos = renderObjetivos;
         if (typeof openModalObjetivo === 'function') window.openModalObjetivo = openModalObjetivo;
 
+
+        // Genera gráfica lista para PDF: fondo blanco, nombres negros, ancha, ticks 0-25-50-75-100
+        function generarImagenGraficaObjetivoPDF(o) {
+            try {
+                if (typeof Chart === 'undefined') return '';
+                const itemsList = o.items || [];
+                if (!itemsList.length && o.tipo !== 'litros') return '';
+
+                let labels = [], dataPct = [], colors = [];
+                if (o.tipo === 'litros') {
+                    const av = avanceObjetivoLitros(o);
+                    labels = ['Diésel', 'Gasolina Regular', 'Gasolina Premium'];
+                    dataPct = [av.diesel.pct, av.regular.pct, av.premium.pct];
+                    colors = ['#f59e0b', '#0ea5e9', '#10b981'];
+                } else {
+                    labels = itemsList.map(it => (it.cliente || '-').trim());
+                    dataPct = itemsList.map(it => {
+                        const meta = it.litrosObjetivo || ((it.numero || 1) * litrosPorCarga(it.tipoCarga || 'Sencillo'));
+                        const vend = litrosVendidosItem(o, it);
+                        return meta > 0 ? Math.min(100, Math.round(vend / meta * 100)) : 0;
+                    });
+                    colors = dataPct.map(p => {
+                        if (p >= 100) return '#10b981';
+                        if (p >= 75) return '#34d399';
+                        if (p >= 50) return '#f59e0b';
+                        if (p >= 25) return '#fb923c';
+                        return '#38bdf8';
+                    });
+                }
+
+                const n = Math.max(labels.length, 1);
+                const canvas = document.createElement('canvas');
+                canvas.width = 1100;
+                canvas.height = Math.max(320, n * 48 + 80);
+                const ctx = canvas.getContext('2d');
+                // fondo blanco
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                const chart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: dataPct,
+                            backgroundColor: colors,
+                            borderWidth: 0,
+                            borderRadius: 10,
+                            borderSkipped: false,
+                            barPercentage: 0.32,
+                            categoryPercentage: 0.6
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: false,
+                        animation: false,
+                        maintainAspectRatio: false,
+                        layout: { padding: { left: 8, right: 24, top: 12, bottom: 12 } },
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: {
+                                min: 0,
+                                max: 100,
+                                ticks: {
+                                    color: '#111111',
+                                    font: { size: 12, weight: '600' },
+                                    stepSize: 25,
+                                    callback: v => v
+                                },
+                                grid: { color: '#e5e7eb' },
+                                border: { color: '#9ca3af' }
+                            },
+                            y: {
+                                ticks: {
+                                    color: '#111111',
+                                    font: { size: 11, weight: '600' },
+                                    autoSkip: false,
+                                    maxRotation: 0,
+                                    minRotation: 0,
+                                    crossAlign: 'far'
+                                },
+                                grid: { display: false },
+                                border: { color: '#9ca3af' }
+                            }
+                        }
+                    }
+                });
+                const img = canvas.toDataURL('image/png');
+                chart.destroy();
+                return img;
+            } catch (e) {
+                console.error('PDF chart error', e);
+                return '';
+            }
+        }
+
         window.exportarObjetivoPDF = function(idx) {
             const raw = window.objetivos[idx];
             if (!raw) return;
@@ -3444,10 +3575,19 @@
 
             if (o.tipo === 'litros') {
                 const av = avanceObjetivoLitros(o);
+                const chartImg = generarImagenGraficaObjetivoPDF(o);
                 const w = window.open('', '_blank');
                 w.document.write(`<!DOCTYPE html><html><head><title>Objetivo litros ${o.fechaInicio}</title>
-                <style>body{font-family:Arial;padding:24px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #ccc;padding:8px}th{background:#0b1e36;color:#fff}@media print{button{display:none}}</style></head><body>
+                <style>
+                    body{font-family:Arial;padding:24px;color:#111}
+                    table{width:100%;border-collapse:collapse;font-size:12px}
+                    th,td{border:1px solid #ccc;padding:8px}th{background:#0b1e36;color:#fff}
+                    .page{page-break-after:always}.page:last-child{page-break-after:auto}
+                    img{max-width:100%;height:auto;border:1px solid #ddd}
+                    @media print{button{display:none}}
+                </style></head><body>
                 <button onclick="window.print()" style="padding:8px 16px;background:#dc2626;color:#fff;border:none;border-radius:4px;font-weight:bold;margin-bottom:12px">Imprimir / Guardar PDF</button>
+                <div class="page">
                 <h1>REGIO FUEL — Objetivo por Litros</h1>
                 <p>Periodo: ${o.fechaInicio} → ${o.fechaFin}</p>
                 <p>Avance global: <b>${av.pct}%</b> (${Math.round(av.efectTotal).toLocaleString('es-MX')} / ${av.metaTotal.toLocaleString('es-MX')} Lts efectivos)</p>
@@ -3457,8 +3597,15 @@
                 <tr><td>Gasolina Regular</td><td>${av.regular.meta.toLocaleString('es-MX')}</td><td>${Math.round(av.regular.efect).toLocaleString('es-MX')}</td><td>${av.regular.pct}%</td></tr>
                 <tr><td>Gasolina Premium</td><td>${av.premium.meta.toLocaleString('es-MX')}</td><td>${Math.round(av.premium.efect).toLocaleString('es-MX')}</td><td>${av.premium.pct}%</td></tr>
                 </tbody></table>
-                <p style="font-size:11px;color:#888;margin-top:16px">* Efectivos: Entregada 100%, En Tránsito 50%, Detenida/Contratiempo 25%</p>
-                <script>setTimeout(function(){window.print()},400);<\/script></body></html>`);
+                <p style="font-size:11px;color:#888;margin-top:16px">* Efectivos: Entregada 100%, En Tránsito 50%, Detenida/Contratiempo 25% · Página 1 — Reporte</p>
+                </div>
+                <div class="page">
+                <h1>REGIO FUEL — Gráfica de avance por combustible</h1>
+                <p>Periodo: ${o.fechaInicio} → ${o.fechaFin}</p>
+                <div style="text-align:center">${chartImg ? `<img src="${chartImg}" alt="Gráfica"/>` : '<p>Abre Objetivos y exporta de nuevo para incluir la gráfica.</p>'}</div>
+                <p style="font-size:11px;color:#888;margin-top:16px">Página 2 — Gráfica</p>
+                </div>
+                <script>setTimeout(function(){window.print()},500);<\/script></body></html>`);
                 w.document.close();
                 return;
             }
@@ -3483,6 +3630,9 @@
                 </tr>`;
             });
             const pctG = totalMeta > 0 ? Math.min(100, Math.round(totalVend / totalMeta * 100)) : 0;
+            // Gráfica especial para PDF (nombres negros, ancha, ticks 0-25-50-75-100)
+            const chartImg = generarImagenGraficaObjetivoPDF(o);
+
             const w = window.open('', '_blank');
             w.document.write(`<!DOCTYPE html><html><head><title>Objetivo ${o.fechaInicio} - ${o.fechaFin}</title>
                 <style>
@@ -3491,17 +3641,24 @@
                     h2{font-size:14px;color:#555;font-weight:normal;margin:0 0 16px}
                     table{width:100%;border-collapse:collapse;font-size:12px;margin-top:12px}
                     th{background:#0b1e36;color:#fff;padding:8px;border:1px solid #333;text-align:left}
-                    .kpi{display:flex;gap:16px;margin:12px 0}
+                    td{border:1px solid #ccc;padding:6px}
+                    .kpi{display:flex;gap:16px;margin:12px 0;flex-wrap:wrap}
                     .kpi div{border:1px solid #ddd;padding:10px 14px;border-radius:6px}
-                    @media print{button{display:none}}
+                    .page{page-break-after:always}
+                    .page:last-child{page-break-after:auto}
+                    .chart-wrap{text-align:center;margin-top:16px}
+                    .chart-wrap img{width:100%;max-width:100%;height:auto;border:1px solid #ddd}
+                    @media print{button{display:none} body{padding:12px}}
                 </style></head><body>
                 <button onclick="window.print()" style="padding:8px 16px;margin-bottom:12px;cursor:pointer;background:#dc2626;color:#fff;border:none;border-radius:4px;font-weight:bold">Imprimir / Guardar PDF</button>
-                <h1>REGIO FUEL — Objetivo Semanal</h1>
+
+                <div class="page">
+                <h1>REGIO FUEL — Objetivo por Clientes</h1>
                 <h2>Periodo: ${o.fechaInicio || ''} → ${o.fechaFin || ''}</h2>
                 ${o.notasGenerales ? `<p><b>Notas:</b> ${o.notasGenerales}</p>` : ''}
                 <div class="kpi">
                     <div><b>Meta total</b><br>${totalMeta.toLocaleString('es-MX')} Lts</div>
-                    <div><b>Vendidos</b><br>${totalVend.toLocaleString('es-MX')} Lts</div>
+                    <div><b>Vendidos (efectivos)</b><br>${Math.round(totalVend).toLocaleString('es-MX')} Lts</div>
                     <div><b>Avance</b><br>${pctG}%</div>
                     <div><b>Clientes</b><br>${(o.items||[]).length}</div>
                 </div>
@@ -3512,8 +3669,19 @@
                     </tr></thead>
                     <tbody>${rowsHtml}</tbody>
                 </table>
-                <p style="margin-top:24px;font-size:11px;color:#888">Generado: ${new Date().toLocaleString('es-MX')} · REGIO FUEL</p>
-                <script>setTimeout(function(){ window.print(); }, 400);<\/script>
+                <p style="margin-top:24px;font-size:11px;color:#888">Generado: ${new Date().toLocaleString('es-MX')} · REGIO FUEL · Página 1 — Reporte</p>
+                </div>
+
+                <div class="page">
+                <h1>REGIO FUEL — Gráfica de avance</h1>
+                <h2>Periodo: ${o.fechaInicio || ''} → ${o.fechaFin || ''} · Avance por cliente (%)</h2>
+                <div class="chart-wrap">
+                    ${chartImg ? `<img src="${chartImg}" alt="Gráfica de avance por cliente"/>` : '<p style="color:#888">Abre la pestaña Objetivos para que la gráfica se genere y luego exporta de nuevo.</p>'}
+                </div>
+                <p style="margin-top:24px;font-size:11px;color:#888">Página 2 — Gráfica · Cada barra corresponde al cliente indicado a la izquierda</p>
+                </div>
+
+                <script>setTimeout(function(){ window.print(); }, 500);<\/script>
                 </body></html>`);
             w.document.close();
         };
