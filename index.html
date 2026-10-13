@@ -2079,11 +2079,11 @@
             const litrosAgentes = labelsAgentes.map(k => agentesMap[k].litros);
             const dineroAgentes = labelsAgentes.map(k => agentesMap[k].dinero);
 
-            // Altura dinámica: cada agente tiene su fila, sin encimar nombres
+            // Altura más compacta por agente
             const wrap = document.getElementById('chartVentasAgentesWrap');
             const nAg = Math.max(labelsAgentes.length, 1);
             if (wrap) {
-                const h = Math.max(260, nAg * 44 + 60);
+                const h = Math.max(200, nAg * 28 + 48);
                 wrap.style.height = h + 'px';
             }
 
@@ -2105,17 +2105,17 @@
                             data: litrosAgentes.length ? litrosAgentes : [0],
                             backgroundColor: colors,
                             borderWidth: 0,
-                            borderRadius: 8,
+                            borderRadius: 6,
                             borderSkipped: false,
-                            barPercentage: 0.45,
-                            categoryPercentage: 0.7
+                            barPercentage: 0.32,
+                            categoryPercentage: 0.55
                         }]
                     },
                     options: {
                         indexAxis: 'y',
                         responsive: true,
                         maintainAspectRatio: false,
-                        layout: { padding: { left: 4, right: 16, top: 4, bottom: 4 } },
+                        layout: { padding: { left: 4, right: 12, top: 2, bottom: 2 } },
                         plugins: {
                             legend: { display: false },
                             tooltip: {
@@ -2147,7 +2147,7 @@
                             y: {
                                 ticks: {
                                     color: '#e2e8f0',
-                                    font: { size: 11, weight: '600' },
+                                    font: { size: 10, weight: '600' },
                                     autoSkip: false,
                                     maxRotation: 0,
                                     minRotation: 0,
