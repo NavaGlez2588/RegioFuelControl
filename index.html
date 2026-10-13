@@ -3014,19 +3014,24 @@
                             onblur="actualizarItemNota(${realIdx}, ${itemIdx}, this.value)" placeholder="Estatus...">`
                         : `<span class="text-[10px] text-slate-400">${item.estatusObs || '-'}</span>`;
 
+                    const barColor = pct >= 100 ? '#10b981' : pct >= 75 ? '#34d399' : pct >= 50 ? '#f59e0b' : pct >= 25 ? '#fb923c' : '#38bdf8';
                     return `<tr>
-                        <td class="p-2 font-semibold text-white">${item.cliente}</td>
+                        <td class="p-2 font-semibold text-white whitespace-nowrap">${item.cliente}</td>
                         <td class="p-2">${item.producto || '-'}</td>
                         <td class="p-2 text-center">${item.numero || 1}</td>
                         <td class="p-2">${item.tipoCarga || 'Sencillo'}</td>
                         <td class="p-2 text-amber-400 font-bold">${meta.toLocaleString('es-MX')}</td>
                         <td class="p-2 font-bold ${auto?'text-emerald-400':'text-cyan-300'}">${Math.round(vendidos).toLocaleString('es-MX')}<div class="text-[9px] text-slate-500">efectivos*</div></td>
-                        <td class="p-2">
-                            <div class="w-full bg-slate-800 rounded h-2 mb-1"><div class="h-2 rounded ${pct>=100?'bg-emerald-500':pct>=50?'bg-amber-500':'bg-orange-500'}" style="width:${pct}%"></div></div>
-                            <span class="text-[9px] text-slate-400">${pct}%</span>
-                        </td>
                         <td class="p-2">${cumpleCtrl}<div class="text-[9px] text-slate-500">${auto?'Meta alcanzada ✓':''}</div></td>
-                        <td class="p-2 min-w-[120px]">${notaCtrl}</td>
+                        <td class="p-2 min-w-[110px]">${notaCtrl}</td>
+                        <td class="p-2 min-w-[160px] sm:min-w-[200px]">
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1 bg-slate-800 rounded-full h-3 overflow-hidden border border-slate-700">
+                                    <div class="h-full rounded-full transition-all" style="width:${pct}%;background:${barColor};"></div>
+                                </div>
+                                <span class="text-[11px] font-bold tabular-nums w-10 text-right" style="color:${barColor}">${pct}%</span>
+                            </div>
+                        </td>
                     </tr>`;
                 }).join('');
 
@@ -3048,8 +3053,7 @@
                             ${adminBtns}
                         </div>
                     </div>
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-0">
-                        <div class="lg:col-span-2 overflow-x-auto p-3">
+                    <div class="overflow-x-auto p-3">
                             <table class="w-full text-left text-xs">
                                 <thead class="text-[10px] uppercase text-slate-400 bg-slate-900/80">
                                     <tr>
@@ -3059,109 +3063,16 @@
                                         <th class="p-2">Tipo</th>
                                         <th class="p-2">Meta Lts</th>
                                         <th class="p-2">Vendidos</th>
-                                        <th class="p-2">Avance</th>
                                         <th class="p-2">Cumplido</th>
                                         <th class="p-2">Estatus</th>
+                                        <th class="p-2 min-w-[160px]">Avance %</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-regio">${rows || '<tr><td colspan="9" class="p-3 text-slate-500">Sin clientes</td></tr>'}</tbody>
                             </table>
+                            <p class="text-[10px] text-slate-500 mt-2 px-1">${Math.round(totalVend).toLocaleString('es-MX')} / ${totalMeta.toLocaleString('es-MX')} Lts efectivos · * Avance: Entregada 100% · En Tránsito 50% · Detenida/Contratiempo 25%</p>
                         </div>
-                        <div class="p-4 border-t lg:border-t-0 lg:border-l border-regio">
-                            <p class="text-xs font-bold text-slate-300 mb-2 text-center">Avance por cliente (%)</p>
-                            <div class="relative w-full" style="height:${Math.max(220, ((o.items||[]).length || 1) * 42 + 48)}px;">
-                                <canvas id="${chartId}"></canvas>
-                            </div>
-                            <p class="text-[10px] text-center text-slate-500 mt-2">${totalVend.toLocaleString('es-MX')} / ${totalMeta.toLocaleString('es-MX')} Lts</p>
-                        </div>
-                    </div>
                 </div>`;
-
-                // Chart after DOM insert - schedule
-                setTimeout(() => {
-                    const canvas = document.getElementById(chartId);
-                    if (!canvas || typeof Chart === 'undefined') return;
-                    const itemsList = o.items || [];
-                    // Etiquetas cortas en 1 línea para alinear 1:1 con cada barra
-                    const labels = itemsList.map(it => {
-                        const nom = (it.cliente || '-').trim();
-                        return nom.length > 22 ? nom.slice(0, 20) + '…' : nom;
-                    });
-                    const labelsFull = itemsList.map(it => it.cliente || '-');
-                    const dataPct = itemsList.map(it => {
-                        const meta = it.litrosObjetivo || ((it.numero || 1) * litrosPorCarga(it.tipoCarga || 'Sencillo'));
-                        const vend = litrosVendidosItem(o, it);
-                        return meta > 0 ? Math.min(100, Math.round(vend / meta * 100)) : 0;
-                    });
-                    // Colores degradados por nivel de avance
-                    const colors = dataPct.map(p => {
-                        if (p >= 100) return '#10b981';      // verde
-                        if (p >= 75) return '#34d399';
-                        if (p >= 50) return '#f59e0b';       // ámbar
-                        if (p >= 25) return '#fb923c';       // naranja
-                        return '#38bdf8';                    // cielo
-                    });
-                    if (window.objChartInstances[chartId]) {
-                        try { window.objChartInstances[chartId].destroy(); } catch(e) {}
-                    }
-                    window.objChartInstances[chartId] = new Chart(canvas.getContext('2d'), {
-                        type: 'bar',
-                        data: {
-                            labels: labels.length ? labels : ['Sin clientes'],
-                            datasets: [{
-                                label: '% cumplimiento',
-                                data: dataPct.length ? dataPct : [0],
-                                backgroundColor: colors.length ? colors : ['#38bdf8'],
-                                borderWidth: 0,
-                                borderRadius: 8,
-                                borderSkipped: false,
-                                barPercentage: 0.35,
-                                categoryPercentage: 0.65
-                            }]
-                        },
-                        options: {
-                            indexAxis: 'y',
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            layout: { padding: { left: 4, right: 12, top: 6, bottom: 6 } },
-                            plugins: {
-                                legend: { display: false },
-                                tooltip: {
-                                    callbacks: {
-                                        title: (items) => {
-                                            const i = items[0] && items[0].dataIndex;
-                                            return labelsFull[i] != null ? labelsFull[i] : (items[0] && items[0].label);
-                                        },
-                                        label: (ctx) => (ctx.parsed.x != null ? ctx.parsed.x : 0) + '% de la meta'
-                                    }
-                                }
-                            },
-                            scales: {
-                                x: {
-                                    min: 0, max: 100,
-                                    ticks: {
-                                        color: '#94a3b8',
-                                        font: { size: 9 },
-                                        stepSize: 25,
-                                        callback: v => v + '%'
-                                    },
-                                    grid: { color: 'rgba(30, 58, 95, 0.6)' }
-                                },
-                                y: {
-                                    ticks: {
-                                        color: '#e2e8f0',
-                                        font: { size: 9, weight: '600' },
-                                        autoSkip: false,
-                                        maxRotation: 0,
-                                        minRotation: 0,
-                                        crossAlign: 'far'
-                                    },
-                                    grid: { display: false }
-                                }
-                            }
-                        }
-                    });
-                }, 50);
             });
         }
 
@@ -3617,16 +3528,24 @@
                 const vend = litrosVendidosItem(o, item);
                 totalMeta += meta; totalVend += vend;
                 const pct = meta > 0 ? Math.min(100, Math.round(vend / meta * 100)) : 0;
+                const barC = pct >= 100 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#38bdf8';
                 rowsHtml += `<tr>
                     <td style="border:1px solid #ccc;padding:6px;">${item.cliente}</td>
                     <td style="border:1px solid #ccc;padding:6px;">${item.producto || ''}</td>
                     <td style="border:1px solid #ccc;padding:6px;text-align:center;">${item.numero || 1}</td>
                     <td style="border:1px solid #ccc;padding:6px;">${item.tipoCarga || ''}</td>
                     <td style="border:1px solid #ccc;padding:6px;text-align:right;">${meta.toLocaleString('es-MX')}</td>
-                    <td style="border:1px solid #ccc;padding:6px;text-align:right;">${vend.toLocaleString('es-MX')}</td>
-                    <td style="border:1px solid #ccc;padding:6px;text-align:center;">${pct}%</td>
+                    <td style="border:1px solid #ccc;padding:6px;text-align:right;">${Math.round(vend).toLocaleString('es-MX')}</td>
                     <td style="border:1px solid #ccc;padding:6px;">${item.cumplido === 'si' ? 'Sí' : item.cumplido === 'no' ? 'No' : 'Pendiente'}</td>
                     <td style="border:1px solid #ccc;padding:6px;">${item.estatusObs || ''}</td>
+                    <td style="border:1px solid #ccc;padding:6px;min-width:140px;">
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            <div style="flex:1;background:#e5e7eb;border-radius:999px;height:10px;overflow:hidden;">
+                                <div style="width:${pct}%;height:100%;background:${barC};border-radius:999px;"></div>
+                            </div>
+                            <b style="color:${barC};font-size:12px;width:36px;text-align:right;">${pct}%</b>
+                        </div>
+                    </td>
                 </tr>`;
             });
             const pctG = totalMeta > 0 ? Math.min(100, Math.round(totalVend / totalMeta * 100)) : 0;
@@ -3665,7 +3584,7 @@
                 <table>
                     <thead><tr>
                         <th>Cliente</th><th>Producto</th><th>Cargas</th><th>Tipo</th>
-                        <th>Meta Lts</th><th>Vendidos</th><th>Avance</th><th>Cumplido</th><th>Estatus</th>
+                        <th>Meta Lts</th><th>Vendidos</th><th>Cumplido</th><th>Estatus</th><th>Avance %</th>
                     </tr></thead>
                     <tbody>${rowsHtml}</tbody>
                 </table>
